@@ -50,8 +50,8 @@ find_package(catkin REQUIRED COMPONENTS
 ## Generate messages in the 'msg' folder
  add_message_files(
    FILES
-   #CubeDefString.msg
-   #SolveMsg.msg
+   CubeDefString.msg
+   SolveMsg.msg
  )
 
 ## Generate services in the 'srv' folder
@@ -105,10 +105,10 @@ find_package(catkin REQUIRED COMPONENTS
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-  INCLUDE_DIRS include
+  #INCLUDE_DIRS include
   LIBRARIES twophase_solver_ros
   CATKIN_DEPENDS roscpp rospy std_msgs
-  DEPENDS system_lib
+  #DEPENDS system_lib
 )
 
 ###########
