@@ -1,21 +1,19 @@
 #!/usr/bin/env python
 # coding: utf-8
-
 import rospy
 import numpy as np
 import cv2
 import rospkg
 from enums import Color # U=0 R=1 F=2 D=3 L=4 B=5
-from matplotlib import pyplot as plt # histograms
 import rospkg
 
 
 ### config
-
-modus = 1  # 0 = record # vlt über menü auswahl steuern
 rospack = rospkg.RosPack()
 fpath = rospack.get_path('twophase_solver_ros') + '/images/'
-customname = 'Anwendungsbeispiel'
+#customname = 'Anwendungsbeispiel'
+customname = 'Vorfuehrung_'
+modus = 1   # 0 = record/write!                                                 # vlt über menü steuern
 
 def save_image(img, i):
     filepath = fpath + customname + str(Color(i)) + '.png'
@@ -114,7 +112,7 @@ def scan_cube():
     for i in range(6):
         ### get cube face images
         if modus == 0:      # bilder aufnehmen
-            cam = cv2.VideoCapture(2)
+            cam = cv2.VideoCapture(0)
             #cam.set(cv2.CAP_PROP_EXPOSURE, 0.1)
             #cam.set(cv2.CAP_PROP)
             width = int(cam.get(cv2.CAP_PROP_FRAME_WIDTH))
