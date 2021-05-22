@@ -57,7 +57,7 @@ def detect_blobs(img):
     keypoints = detector.detect(img) # detect
     img_pts = cv2.drawKeypoints(img, keypoints, np.array([]), (0,0,255)) #, cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS) #flags für entsprechende kreisgröße
     if np.size(keypoints) == 9: # prüfen ob farbzahl stimmt (9 von jeder farbe) 
-    return keypoints, img_pts
+    	return keypoints, img_pts
 
 def find_nearest(array, value):
     """finds nearest array-value to a given scalar"""
@@ -181,7 +181,7 @@ def scan_cube():
         if i == var: cv2.imwrite(path + "awbsp/morph" + ".png", img_bin)
 
         ## individuelle ROI finden
-        contours, hierarchy = cv2.findContours(cv2.bitwise_not(img_bin), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        _, contours, hierarchy = cv2.findContours(cv2.bitwise_not(img_bin), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         hierarchy = hierarchy[0] # unnötige listenstruktur loswerden
         for (cnt, hie) in zip(contours, hierarchy):      
             if hie[2] >= 0 and hie[3] < 0: # contour has child(s) but no parent
