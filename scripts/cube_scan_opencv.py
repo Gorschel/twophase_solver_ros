@@ -34,14 +34,15 @@ def generateDefParams(h, w):
     'create default parameter set'
     params = cv2.SimpleBlobDetector_Params()
     maxArea = w * h
+    params.minDistBetweenBlobs = 9.0
     # Change thresholds
     params.minThreshold = 0
     params.maxThreshold = 256
     params.thresholdStep = 37
     # Filter by Area.
     params.filterByArea = True
-    params.minArea = maxArea / 50
-    params.maxArea = maxArea / 9
+    params.minArea = maxArea / 60
+    params.maxArea = maxArea / 10
     # Filter by Convexity
     params.filterByConvexity = True
     params.minConvexity = 0.8
@@ -58,7 +59,7 @@ def detect_blobs(img):
     detector = cv2.SimpleBlobDetector_create(params)  # create detector
     keypoints = detector.detect(img)  # detect
     img_pts = cv2.drawKeypoints(img, keypoints, np.array([]), (
-    0, 0, 255))  # , cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS) #flags für entsprechende kreisgröße
+        0, 0, 255))  # , cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS) #flags für entsprechende kreisgröße
     if np.size(keypoints) == 9: pass  # prüfen ob farbzahl stimmt (9 von jeder farbe)
     return keypoints, img_pts
 
@@ -159,11 +160,13 @@ def scan_cube():
             cam.release()
             save_image(img, i)
         elif modus == 1:  # bilder laden
-            img = load_image(i)
+            img_raw = load_image(i)
+            # bilder zuschneiden
+            img = img_raw[150:480, 150:420, :]  # y_min:y_max, x_min:x_max, :
 
         ##Save/Plot cfg
         var = -1
-        plot = False
+        plot = True
 
         ## farbraum trafo / split
         img_hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV_FULL)
@@ -176,21 +179,21 @@ def scan_cube():
 
         ## binary image "schwarzes Würfelgitter"
         # adaptive threshhold 
-        if plot: cv2.imshow("L" + str(i), img_lab[:, :, 0])
+        if plot: cv2.imshow("0_L" + str(i), img_lab[:, :, 0])
         img_bin = cv2.adaptiveThreshold(img_lab[:, :, 0], 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 81,
                                         5)  # nach value binarisieren
-        if plot: cv2.imshow("adaptive" + str(i), img_bin)
+        if plot: cv2.imshow("1_adaptive" + str(i), img_bin)
         # if i == var: cv2.imwrite(path + "awbsp/adaptivethresh" + ".png", img_bin)
         # morphologische filter; iterations > 1 not working
-        img_bin = cv2.morphologyEx(img_bin, cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8), iterations=1,
-                                   borderType=cv2.MORPH_CROSS)
+        img_bin = cv2.morphologyEx(img_bin, cv2.MORPH_OPEN, np.ones((13, 13), np.uint8), iterations=1,
+                                   borderType=cv2.MORPH_RECT)
         img_bin = cv2.morphologyEx(img_bin, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8), iterations=1,
                                    borderType=cv2.MORPH_CROSS)
-        img_bin = cv2.morphologyEx(img_bin, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8), iterations=1,
-                                   borderType=cv2.MORPH_CROSS)
-        img_bin = cv2.morphologyEx(img_bin, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8), iterations=1,
-                                   borderType=cv2.MORPH_CROSS)
-        if plot: cv2.imshow("nach morph" + str(i), img_bin)
+        #img_bin = cv2.morphologyEx(img_bin, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8), iterations=1,
+        #                           borderType=cv2.MORPH_CROSS)
+        #img_bin = cv2.morphologyEx(img_bin, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8), iterations=1,
+        #                           borderType=cv2.MORPH_CROSS)
+        if plot: cv2.imshow("2_nach morph" + str(i), img_bin)
         # if i == var: cv2.imwrite(path + "awbsp/morph" + ".png", img_bin)
 
         ## individuelle ROI finden
@@ -198,24 +201,31 @@ def scan_cube():
         hierarchy = hierarchy[0]  # unnötige listenstruktur loswerden
         for (cnt, hie) in zip(contours, hierarchy):
             if hie[2] >= 0 and hie[3] < 0:  # contour has child(s) but no parent
-                x, y, w, h = cv2.boundingRect(cnt)
-                mask = img_bin.copy()  # np.zeros((h,w)) #! wert wird auch später immer auf 0 gesetzt
-                mask[:, :] = 0  # maske leeren
-                cv2.fillPoly(mask, [cnt], 255)
-                img_bin_roi = cv2.bitwise_and(img_bin[y:y + h, x:x + w],
-                                              mask[y:y + h, x:x + w])  # remove any other objects in roi
-                img_lab_roi = img_lab[y:y + h, x:x + w]  # für pixelzugriff mit schwerpunktkordinaten nötig
-                if plot: cv2.imshow('mask' + str(i), mask)
-                """if i == var:        
-                    cv2.imwrite(path + "awbsp/bin-roi" + ".png", img_bin_roi)
-                    cv2.imwrite(path + "awbsp/mask_cnt" + ".png", mask)
-                    cv2.imwrite(path + "awbsp/lab-roi" + ".png", img_lab_roi)"""
+                # TODO: check for contour shape
+                #  or if it has 9 subcontours
+                epsilon = 0.1 * cv2.arcLength(cnt, True)
+                approx = cv2.approxPolyDP(cnt, epsilon, True)
+
+                if cv2.contourArea(approx) >= 500:
+                    x, y, w, h = cv2.boundingRect(cnt)
+                    mask = img_bin.copy()  # np.zeros((h,w)) #! wert wird auch später sonst immer auf 0 gesetzt
+                    mask[:, :] = 0  # maske leeren
+                    cv2.fillPoly(mask, [cnt], 255)
+                    img_bin_roi = cv2.bitwise_and(img_bin[y:y + h, x:x + w],
+                                                  mask[y:y + h, x:x + w])  # remove any other objects in roi
+                    img_lab_roi = img_lab[y:y + h, x:x + w]  # für pixelzugriff mit schwerpunktkordinaten nötig
+                    if plot: cv2.imshow('3_mask' + str(i), mask)
+                    """if i == var:        
+                        cv2.imwrite(path + "awbsp/bin-roi" + ".png", img_bin_roi)
+                        cv2.imwrite(path + "awbsp/mask_cnt" + ".png", mask)
+                        cv2.imwrite(path + "awbsp/lab-roi" + ".png", img_lab_roi)"""
             else:
-                continue
+                continue  # skip contour
 
         ## schwerpunkte der sticker finden (blob detector)
+        cv2.imshow("bin_roi"+str(i), img_bin_roi)
         keypoints, img_pts = detect_blobs(img_bin_roi)
-        if plot: cv2.imshow('keypoints' + str(i), img_pts)
+        if plot: cv2.imshow('4_keypoints' + str(i), img_pts)
         # if i == var: cv2.imwrite(path + "awbsp/keypoints" + ".png", img_pts)
 
         ## allgemeines daten-array bereitstellen (koordinaten,farbdaten) 
