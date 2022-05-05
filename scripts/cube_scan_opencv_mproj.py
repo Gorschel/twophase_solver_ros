@@ -6,9 +6,7 @@ import cv2
 from twophase_solver.enums import Color  # U=0 R=1 F=2 D=3 L=4 B=5
 import rospkg
 
-### config
-
-modus = 1  # 0 = record # vlt über menü auswahl steuern
+# config
 rospack = rospkg.RosPack()
 fpath = rospack.get_path('twophase_solver_ros') + '/images/'
 customname = 'scan_'
@@ -107,64 +105,24 @@ def get_chars(idx):
 def scan_cube():
     """get CubeDefStr from actual Rubics cube, using opencv"""
 
-    ### init
+    # init
     ret = 0
     win_name = "init"  # vlt named window für menü hier erstellen
     data_arr = np.zeros(shape=(6, 9, 5), dtype=np.int16)
     centers = np.zeros(shape=(6, 3), dtype='int')
 
-    ### vlt menü
-    # plot text in blank image
-    # actions like save imgs, start scan, etc
-
-    ### Cube-faces loop
+    # Cube-faces loop
     for i in range(6):
-        ### get cube face images
-        if modus == 0:  # bilder aufnehmen
-            cam = cv2.VideoCapture(2)
-            # cam.set(cv2.CAP_PROP_EXPOSURE, 0.1)
-            # cam.set(cv2.CAP_PROP)
-            width = int(cam.get(cv2.CAP_PROP_FRAME_WIDTH))
-            height = int(cam.get(cv2.CAP_PROP_FRAME_HEIGHT))
-            channels = 3
-            cv2.namedWindow(win_name)
-            # update window name
-            win_name_new = "cam preview for: " + str(Color(i)) + " . [ESC:abort, SPACE:save]"
-            cv2.setWindowTitle(win_name, win_name_new)
-            # preview camera feed
-            while True:
-                ret, frame = cam.read()
-                cv2.imshow(win_name, frame)
-                if not ret:
-                    retval = 0
-                    break
-                k = cv2.waitKey(1)
-                if k % 256 == 27:
-                    # ESC pressed
-                    cv2.destroyAllWindows()  # disable preview window
-                    print("aborted")
-                    retval = 1
-                    break
-                elif k % 256 == 32:
-                    # SPACE pressed
-                    img = frame
-                    retval = 2
-                    cv2.setWindowTitle(win_name, "[saved]" + str(Color(i)))
-                    break
-            if retval < 2: break
-            win_name = win_name_new
-            cv2.destroyAllWindows()
-            cam.release()
-            save_image(img, i)
-        elif modus == 1:  # bilder laden
-            img_raw = load_image(i)
-            # bilder zuschneiden
-            img = img_raw[150:480, 150:430, :]  # y_min:y_max, x_min:x_max, :
+        # get cube face images
 
-        ## Save/Plot cfg
+        img_raw = load_image(i)
+        # bilder zuschneiden
+        img = img_raw[150:480, 150:430, :]  # y_min:y_max, x_min:x_max, :
+
+        # Save/Plot cfg
         plot = range(0, 9)
 
-        ## farbraum trafo / split
+        # farbraum trafo / split
         img_hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV_FULL)
         img_lab = cv2.cvtColor(img, cv2.COLOR_BGR2Lab)
         img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -174,7 +132,7 @@ def scan_cube():
             cv2.imwrite(path + "awbsp/hsv" + ".png", img_hsv)
             cv2.imwrite(path + "awbsp/lab" + ".png", img_lab)"""
 
-        ## binary image "schwarzes Würfelgitter"
+        # binary image "schwarzes Würfelgitter"
         # adaptive threshhold 
         if 0 in plot:
             cv2.imshow("0_L" + str(i), img_lab[:, :, 0])
@@ -216,7 +174,7 @@ def scan_cube():
         if 3 in plot: cv2.imshow("3_nach_morph" + str(i), img_bin)
         # if i == var: cv2.imwrite(path + "awbsp/morph" + ".png", img_bin)
 
-        ## individuelle ROI finden
+        # individuelle ROI finden
         contours, hierarchy = cv2.findContours(cv2.bitwise_not(img_bin), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         hierarchy = hierarchy[0]  # unnötige listenstruktur loswerden
 
@@ -266,7 +224,7 @@ def scan_cube():
             else:
                 continue  # skip contour
 
-        ## schwerpunkte der sticker finden (blob detector)
+        # schwerpunkte der sticker finden (blob detector)
         try:
             if 6 in plot:
                 cv2.imshow("bin_roi" + str(i), img_bin_roi)
@@ -276,7 +234,7 @@ def scan_cube():
         if 7 in plot: cv2.imshow('4_keypoints' + str(i), img_pts)
         # if i == var: cv2.imwrite(path + "awbsp/keypoints" + ".png", img_pts)
 
-        ## allgemeines daten-array bereitstellen (koordinaten,farbdaten) 
+        # allgemeines daten-array bereitstellen (koordinaten,farbdaten) 
         img_probe = cv2.medianBlur(img_lab_roi, 3)
         if len(keypoints) == 9:
             for r in range(9):
@@ -289,15 +247,13 @@ def scan_cube():
         else:
             pass
 
-        ## Blob-schwerpunkte nach Bildkoordinaten sortieren
+        # Blob-schwerpunkte nach Bildkoordinaten sortieren
         data_arr[i] = sort_data(np.copy(data_arr[i]))
 
-        ## center farben zwischenspeichern
+        # center farben zwischenspeichern
         centers[i] = data_arr[i][4][2:]
 
-    ############ i-Schleife vorbei
-
-    ## sticker- nach center-farben zuordnen und wertebereich ändern (U..B anstatt 0..5))
+    # sticker- nach center-farben zuordnen und wertebereich ändern (U..B anstatt 0..5))
     CubeDefStr = ""
     for i in range(6):
         for r in range(9):
@@ -305,7 +261,7 @@ def scan_cube():
             idx, color = find_nearest(centers, value)
             CubeDefStr += get_chars(idx)
 
-    ### deinit & return
+    # deinit & return
     cv2.waitKey(0)
     cv2.destroyAllWindows()
     retval = 0  # platzhalter
@@ -313,6 +269,15 @@ def scan_cube():
     # TODO (main): validate solution
 
     return retval, CubeDefStr
+
+
+class Scanner(object):
+    # TODO
+    def __init__(self):
+        pass
+
+    def sth(self):
+        pass
 
 
 if __name__ == "__main__":

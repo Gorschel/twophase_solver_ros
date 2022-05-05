@@ -7,6 +7,7 @@ import rospy
 from twophase_solver_ros.srv import Solver
 from cube_scan_opencv import scan_cube
 
+
 def cube_solver_client(cube):
     rospy.wait_for_service('cube_solver')
     try:
@@ -15,6 +16,7 @@ def cube_solver_client(cube):
         return resp
     except rospy.ServiceException, e:
         print "Service call failed: %s"%e
+
 
 if __name__ == "__main__":
     retval, cube = scan_cube() # vlt return val nötig um roboter selbst die seiten wenden zu lassen
