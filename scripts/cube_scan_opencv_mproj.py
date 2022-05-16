@@ -120,7 +120,7 @@ def scan_cube():
         img = img_raw[150:480, 150:430, :]  # y_min:y_max, x_min:x_max, :
 
         # Save/Plot cfg
-        plot = range(0, 9)
+        plot = range(0, 1)
 
         # farbraum trafo / split
         img_hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV_FULL)
@@ -143,9 +143,8 @@ def scan_cube():
         if 0 in plot: cv2.imshow("0_saturation" + str(i), img_hsv[:, :, 1])
         img_bin_gripper = img_gray.copy()
         # 220..270° = blue -> 255*220/360..225*270/360 -> 156..191
-        cv2.inRange(img_hsv[:, :, 0], 150, 160, img_bin_gripper)
         # cv2.threshold(img_hsv[:, :, 0], 80, 255, cv2.THRESH_BINARY, img_bin_gripper)
-
+        cv2.inRange(img_hsv[:, :, 0], 150, 160, img_bin_gripper)
         cv2.morphologyEx(img_bin_gripper, cv2.MORPH_OPEN, np.ones((13, 13), np.uint8), iterations=1,
                          dst=img_bin_gripper)
         cv2.morphologyEx(img_bin_gripper, cv2.MORPH_CLOSE, np.ones((13, 13), np.uint8), iterations=1,
