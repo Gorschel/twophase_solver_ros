@@ -104,153 +104,16 @@ def get_chars(idx):
 
 def scan_cube():
     """get CubeDefStr from actual Rubics cube, using opencv"""
-
-    # init
-    ret = 0
-    win_name = "init"  # vlt named window für menü hier erstellen
-    data_arr = np.zeros(shape=(6, 9, 5), dtype=np.int16)
-    centers = np.zeros(shape=(6, 3), dtype='int')
-
-    # Cube-faces loop
-    for i in range(6):
-        # get cube face images
-
-        img_raw = load_image(i)
-        # bilder zuschneiden
-        img = img_raw[150:480, 150:430, :]  # y_min:y_max, x_min:x_max, :
-
-        # Save/Plot cfg
-        plot = range(0, 1)
-
-        # farbraum trafo / split
-        img_hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV_FULL)
-        img_lab = cv2.cvtColor(img, cv2.COLOR_BGR2Lab)
-        img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        # img_lab = img
-        """if i == var:
-            cv2.imwrite(path + "awbsp/img" + ".png", img)
-            cv2.imwrite(path + "awbsp/hsv" + ".png", img_hsv)
-            cv2.imwrite(path + "awbsp/lab" + ".png", img_lab)"""
-
-        # binary image "schwarzes Würfelgitter"
-        # adaptive threshhold 
-        if 0 in plot:
-            cv2.imshow("0_L" + str(i), img_lab[:, :, 0])
-            cv2.imshow("0_H" + str(i), img_hsv[:, :, 0])
-
-        # TODO (main): nach sättigung binarisieren
-        #  -> schwarzes würfelgitter finden
-        if 0 in plot: cv2.imshow("0_saturation" + str(i), img_hsv[:, :, 1])
-        img_bin_gripper = img_gray.copy()
-        # 220..270° = blue -> 255*220/360..225*270/360 -> 156..191
-        # cv2.threshold(img_hsv[:, :, 0], 80, 255, cv2.THRESH_BINARY, img_bin_gripper)
-        cv2.inRange(img_hsv[:, :, 0], 150, 160, img_bin_gripper)
-        cv2.morphologyEx(img_bin_gripper, cv2.MORPH_OPEN, np.ones((13, 13), np.uint8), iterations=1,
-                         dst=img_bin_gripper)
-        cv2.morphologyEx(img_bin_gripper, cv2.MORPH_CLOSE, np.ones((13, 13), np.uint8), iterations=1,
-                         dst=img_bin_gripper)
-        if 1 in plot: cv2.imshow("1_thresh_blue" + str(i), img_bin_gripper)
-        img_bin = cv2.adaptiveThreshold(src=img_lab[:, :, 0], maxValue=255,
-                                        adaptiveMethod=cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-                                        thresholdType=cv2.THRESH_BINARY,
-                                        blockSize=81,
-                                        C=0)
-
-        cv2.bitwise_or(img_bin, img_bin_gripper, dst=img_bin)
-
-        if 2 in plot: cv2.imshow("2_thresh" + str(i), img_bin)
-
-        # if i == var: cv2.imwrite(path + "awbsp/adaptivethresh" + ".png", img_bin)
-        # morphologische filter; iterations > 1 not working
-        img_bin = cv2.morphologyEx(img_bin, cv2.MORPH_OPEN, np.ones((13, 13), np.uint8), iterations=1,
-                                   borderType=cv2.MORPH_RECT)
-        img_bin = cv2.morphologyEx(img_bin, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8), iterations=1,
-                                   borderType=cv2.MORPH_CROSS)
-        # img_bin = cv2.morphologyEx(img_bin, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8), iterations=1,
-        #                           borderType=cv2.MORPH_CROSS)
-        # img_bin = cv2.morphologyEx(img_bin, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8), iterations=1,
-        #                           borderType=cv2.MORPH_CROSS)
-        if 3 in plot: cv2.imshow("3_nach_morph" + str(i), img_bin)
-        # if i == var: cv2.imwrite(path + "awbsp/morph" + ".png", img_bin)
-
-        # individuelle ROI finden
-        contours, hierarchy = cv2.findContours(cv2.bitwise_not(img_bin), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        hierarchy = hierarchy[0]  # unnötige listenstruktur loswerden
-
-        # TODO: neuer ansatz hierachie-bedingungen:
-        for nr, (cnt, hie) in enumerate(zip(contours, hierarchy)):
-            if hie[2] >= 0 and hie[3] < 0:  # contour has child(s) but no parent
-                # maybe_cube = cnt
-                cube_cnt_id = nr
-                frame = img.copy()
-                min_y, min_x, _ = frame.shape
-                max_y = max_x = 0
-                for contour, hier in zip(contours, hierarchy):
-                    if hier[3] == cube_cnt_id:
-                        (x, y, w, h) = cv2.boundingRect(contour)
-                        min_x, max_x = min(x, min_x), max(x + w, max_x)
-                        min_y, max_y = min(y, min_y), max(y + h, max_y)
-                        if w > 80 and h > 80:
-                            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-
-                if max_x - min_x > 0 and max_y - min_y > 0:
-                    cv2.rectangle(frame, (min_x, min_y), (max_x, max_y), (255, 0, 0), 2)
-
-                if 4 in plot: cv2.imshow("konturbedingungen" + str(i), frame)
-                # 9 subcontours
-                # iterate over all child contours
-
-                # get bounding rects for all subcontours -> array
-
-                # array -> min/max x/y -> new rect
-
-                epsilon = 0.1 * cv2.arcLength(cnt, True)
-                approx = cv2.approxPolyDP(cnt, epsilon, True)
-
-                # if cv2.contourArea(approx) >= 500:
-                x, y, w, h = cv2.boundingRect(cnt)
-                mask = img_bin.copy()  # np.zeros((h,w)) #! wert wird auch später sonst immer auf 0 gesetzt
-                mask[:, :] = 0  # maske leeren
-                cv2.fillPoly(mask, [cnt], 255)
-                img_bin_roi = cv2.bitwise_and(img_bin[y:y + h, x:x + w],
-                                              mask[y:y + h, x:x + w])  # remove any other objects in roi
-                img_lab_roi = img_lab[y:y + h, x:x + w]  # für pixelzugriff mit schwerpunktkordinaten nötig
-                if 5 in plot: cv2.imshow('3_mask' + str(i), mask)
-                """if i == var:        
-                    cv2.imwrite(path + "awbsp/bin-roi" + ".png", img_bin_roi)
-                    cv2.imwrite(path + "awbsp/mask_cnt" + ".png", mask)
-                    cv2.imwrite(path + "awbsp/lab-roi" + ".png", img_lab_roi)"""
-            else:
-                continue  # skip contour
-
-        # schwerpunkte der sticker finden (blob detector)
-        try:
-            if 6 in plot:
-                cv2.imshow("bin_roi" + str(i), img_bin_roi)
-        except UnboundLocalError:
-            print "threshold failed"
-        keypoints, img_pts = detect_blobs(img_bin_roi)
-        if 7 in plot: cv2.imshow('4_keypoints' + str(i), img_pts)
-        # if i == var: cv2.imwrite(path + "awbsp/keypoints" + ".png", img_pts)
-
-        # allgemeines daten-array bereitstellen (koordinaten,farbdaten) 
-        img_probe = cv2.medianBlur(img_lab_roi, 3)
-        if len(keypoints) == 9:
-            for r in range(9):
-                pt = keypoints[r].pt
-                x = int(pt[0])
-                y = int(pt[1])
-                data_arr[i][r][0] = x  # x-Pos
-                data_arr[i][r][1] = y  # y-Pos
-                data_arr[i][r][2:] = img_probe[y][x]  # L a b
-        else:
-            pass
-
-        # Blob-schwerpunkte nach Bildkoordinaten sortieren
-        data_arr[i] = sort_data(np.copy(data_arr[i]))
-
-        # center farben zwischenspeichern
-        centers[i] = data_arr[i][4][2:]
+    # TODO: for cube 2 (carbon) HSV.V[195..205..255] -> black stickers
+    #  find contours
+    #  find centers of mass (floodfill/fillPoly first)
+    #  find circular sticker
+    #  find other stickers around this
+    #  only look at sticker if in one of the 8 directions:
+    #  > iterate over centers of mass in ascending distance to face center.
+    #  > if nearest 4 stickers found find next 4 nearest
+    #  > if dist to any mass center > 2*min(dist(center0, center_nearest)) : too far away
+    #  if missing sticker or too far: new thresh and repeat cube face
 
     # sticker- nach center-farben zuordnen und wertebereich ändern (U..B anstatt 0..5))
     CubeDefStr = ""
@@ -279,7 +142,125 @@ class Scanner(object):
         pass
 
 
+def get_camera_settings(cam):
+    print "########## current camera settings ##### (unset not shown)"
+    res = {}
+    vcap_properties = {'cv::CAP_PROP_POS_MSEC': 0,
+                       "cv::CAP_PROP_POS_FRAMES": 1,
+                       "cv::CAP_PROP_POS_AVI_RATIO": 2,
+                       "cv::CAP_PROP_FRAME_WIDTH": 3,
+                       "cv::CAP_PROP_FRAME_HEIGHT": 4,
+                       "cv::CAP_PROP_FPS": 5,
+                       "cv::CAP_PROP_FOURCC": 6,
+                       "cv::CAP_PROP_FRAME_COUNT": 7,
+                       "cv::CAP_PROP_FORMAT": 8,
+                       "cv::CAP_PROP_MODE": 9,
+                       "cv::CAP_PROP_BRIGHTNESS": 10,
+                       "cv::CAP_PROP_CONTRAST": 11,
+                       "cv::CAP_PROP_SATURATION": 12,
+                       "cv::CAP_PROP_HUE": 13,
+                       "cv::CAP_PROP_GAIN": 14,
+                       "cv::CAP_PROP_EXPOSURE": 15,
+                       "cv::CAP_PROP_CONVERT_RGB": 16,
+                       "cv::CAP_PROP_WHITE_BALANCE_BLUE_U": 17,
+                       "cv::CAP_PROP_RECTIFICATION": 18,
+                       "cv::CAP_PROP_MONOCHROME": 19,
+                       "cv::CAP_PROP_SHARPNESS": 20,
+                       "cv::CAP_PROP_AUTO_EXPOSURE": 21,
+                       "cv::CAP_PROP_GAMMA": 22,
+                       "cv::CAP_PROP_TEMPERATURE": 23,
+                       "cv::CAP_PROP_TRIGGER": 24,
+                       "cv::CAP_PROP_TRIGGER_DELAY": 25,
+                       "cv::CAP_PROP_WHITE_BALANCE_RED_V": 26,
+                       "cv::CAP_PROP_ZOOM": 27,
+                       "cv::CAP_PROP_FOCUS": 28,
+                       "cv::CAP_PROP_GUID": 29,
+                       "cv::CAP_PROP_ISO_SPEED": 30,
+                       "cv::CAP_PROP_BACKLIGHT": 32,
+                       "cv::CAP_PROP_PAN": 33,
+                       "cv::CAP_PROP_TILT": 34,
+                       "cv::CAP_PROP_ROLL": 35,
+                       "cv::CAP_PROP_IRIS": 36,
+                       "cv::CAP_PROP_SETTINGS": 37,
+                       "cv::CAP_PROP_BUFFERSIZE": 38,
+                       "cv::CAP_PROP_AUTOFOCUS": 39,
+                       "cv::CAP_PROP_SAR_NUM": 40,
+                       "cv::CAP_PROP_SAR_DEN": 41,
+                       "cv::CAP_PROP_BACKEND": 42,
+                       "cv::CAP_PROP_CHANNEL": 43,
+                       "cv::CAP_PROP_AUTO_WB": 44,
+                       "cv::CAP_PROP_WB_TEMPERATURE": 45,
+                       "cv::CAP_PROP_CODEC_PIXEL_FORMAT": 46,
+                       "cv::CAP_PROP_BITRATE": 47,
+                       "cv::CAP_PROP_ORIENTATION_META": 48,
+                       "cv::CAP_PROP_ORIENTATION_AUTO": 49,
+                       "cv::CAP_PROP_OPEN_TIMEOUT_MSEC": 53,
+                       "cv::CAP_PROP_READ_TIMEOUT_MSEC": 54
+                       }
+    for key in vcap_properties:
+        value = vcap_properties[key]
+        res[key] = cam.get(value)
+        if res[key] != -1:
+            print "{}:\t{}".format(key[4:], res[key]).expandtabs(13)
+
+
+def set_camera(cam):
+    pass
+
+
+def set_sliders():
+    cv2.namedWindow('marking')
+    cv2.createTrackbar('H Lower', 'marking', 0, 179, nothing)
+    cv2.createTrackbar('H Higher', 'marking', 179, 179, nothing)
+    cv2.createTrackbar('S Lower', 'marking', 0, 255, nothing)
+    cv2.createTrackbar('S Higher', 'marking', 255, 255, nothing)
+    cv2.createTrackbar('V Lower', 'marking', 0, 255, nothing)
+    cv2.createTrackbar('V Higher', 'marking', 255, 255, nothing)
+
+
+def nothing(x):
+    pass
+
+
 if __name__ == "__main__":
-    print "manual cube scan started."
-    retval, cube = scan_cube()
-    print "scan result: %s (%ss)" % (cube, len(cube))
+    # print "manual cube scan started."
+    # retval, cube = scan_cube()
+    # print "scan result: %s (%ss)" % (cube, len(cube))
+    vcap = cv2.VideoCapture(0)
+    set_sliders()
+
+    while True:
+        _, img = vcap.read()
+        img = cv2.flip(img, 1)
+
+        hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+
+        hL = cv2.getTrackbarPos('H Lower', 'marking')
+        hH = cv2.getTrackbarPos('H Higher', 'marking')
+        sL = cv2.getTrackbarPos('S Lower', 'marking')
+        sH = cv2.getTrackbarPos('S Higher', 'marking')
+        vL = cv2.getTrackbarPos('V Lower', 'marking')
+        vH = cv2.getTrackbarPos('V Higher', 'marking')
+
+        LowerRegion = np.array([hL, sL, vL], np.uint8)
+        upperRegion = np.array([hH, sH, vH], np.uint8)
+
+        img_bin = cv2.inRange(hsv, LowerRegion, upperRegion)
+
+        kernel = np.ones((3,3), "uint8")
+
+        mask = cv2.morphologyEx(img_bin, cv2.MORPH_OPEN, kernel)
+        mask = cv2.dilate(mask, kernel, iterations=1)
+
+        result = cv2.bitwise_and(img, img, mask=mask)
+
+        cv2.imshow("Masking ", mask)
+
+        if cv2.waitKey(10) & 0xFF == ord('q'):
+            vcap.release()
+            cv2.destroyAllWindows()
+            break
+
+
+    # get_camera_settings(vcap)
+    set_camera(vcap)
