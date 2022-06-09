@@ -5,6 +5,7 @@ import numpy as np
 import cv2
 from twophase_solver.enums import Color  # U=0 R=1 F=2 D=3 L=4 B=5
 import rospkg
+import math as m
 
 # config
 rospack = rospkg.RosPack()
@@ -104,16 +105,112 @@ def get_chars(idx):
 
 def scan_cube():
     """get CubeDefStr from actual Rubics cube, using opencv"""
-    # TODO: for cube 2 (carbon) HSV.V[195..205..255] -> black stickers
-    #  find contours
-    #  find centers of mass (floodfill/fillPoly first)
-    #  find circular sticker
-    #  find other stickers around this
-    #  only look at sticker if in one of the 8 directions:
-    #  > iterate over centers of mass in ascending distance to face center.
-    #  > if nearest 4 stickers found find next 4 nearest
-    #  > if dist to any mass center > 2*min(dist(center0, center_nearest)) : too far away
-    #  if missing sticker or too far: new thresh and repeat cube face
+    ### init
+    data_arr = np.zeros(shape=(6, 9, 5), dtype=np.int16)
+    centers = np.zeros(shape=(6, 3), dtype='int')
+    plot = range(0, 1)
+
+    ### Cube-faces loop
+    for i in range(6):
+
+        img_raw = load_image(i)
+        img = np.zeros(np.shape())
+
+        # find circular sticker on face
+        output = img_raw.copy()
+        circles = cv2.HoughCircles(image=cv2.cvtColor(img_raw, cv2.COLOR_BGR2GRAY),
+                                   method=cv2.HOUGH_GRADIENT,
+                                   dp=1.5, minDist=500000,
+                                   minRadius=5, maxRadius=35)  # detect circles in the image
+        if circles is not None:  # ensure at least some circles were found
+            circles = np.round(circles[0, :]).astype("int")  # convert the (x, y) coordinates and radius of the circles to integers
+            for (x, y, r) in circles:  # loop over the (x, y) coordinates and radius of the circles
+                # draw the circle in the output image, then draw a rectangle corresponding to the center of the circle
+                cv2.circle(output, (x, y), r, (0, 255, 0), 1)
+                cv2.rectangle(output, (x - 1, y - 1), (x + 1, y + 1), (0, 128, 255), -1)
+                cube_width = int(m.ceil(r*3.6))
+                cv2.rectangle(output, (x - cube_width, y - cube_width), (x + cube_width, y + cube_width), (128, 0, 255), 0)
+                img = img_raw[y-cube_width:y+cube_width, x-cube_width:x+cube_width, :]  # y_min:y_max, x_min:x_max
+            # show the output image
+            if 0 in plot:
+                cv2.imshow(str(i) + "_circle", np.hstack([img_raw, output]))
+                cv2.imshow(str(i) + "_img", img)
+
+        @HERE
+
+        ## farbraum trafos
+        img_hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+        img_lab = cv2.cvtColor(img, cv2.COLOR_BGR2Lab)
+        img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+        ## binary image "schwarzes Würfelgitter"
+        # adaptive threshhold
+        if 1 in plot:
+            cv2.imshow(str(i) + "_Lab" + str(i), img_lab)
+            cv2.imshow(str(i) + "_HSV", img_hsv[:, :, 2])
+
+        # TODO: for cube 2 (carbon) HSV.V[195..205..255] -> black stickers
+
+
+
+        img_bin = img_gray.copy()
+        # 220..270° = blue -> 255*220/360..225*270/360 -> 156..191
+        lower = np.array([0, 0, 0], np.uint8)
+        upper = np.array([255, 230, 100], np.uint8)
+        cv2.inRange(img_hsv, lower, upper, img_bin)
+
+        if 1 in plot: cv2.imshow("1_thresh_value" + str(i), img_bin)
+        #img_bin_adapt = cv2.adaptiveThreshold(src=img_lab[:, :, 0], maxValue=255, adaptiveMethod=cv2.ADAPTIVE_THRESH_GAUSSIAN_C,thresholdType=cv2.THRESH_BINARY,blockSize=81,C=0)
+
+        # morphologische filter; iterations > 1 not working
+        img_bin = cv2.morphologyEx(img_bin, cv2.MORPH_OPEN, np.ones((13, 13), np.uint8), iterations=1,
+                                   borderType=cv2.MORPH_RECT)
+        img_bin = cv2.morphologyEx(img_bin, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8), iterations=1,
+                                   borderType=cv2.MORPH_CROSS)
+        if 3 in plot:
+            cv2.imshow("3_nach_morph" + str(i), img_bin)
+            cv2.waitKey(0)
+
+        # TODO: find contours
+
+
+
+        # TODO: find centers of mass (floodfill/fillPoly first)
+
+
+
+        # TODO: find circular sticker
+
+
+
+        # TODO: find other stickers around this
+
+
+
+        # TODO: only look at sticker if in one of the 8 directions:
+
+
+
+        # TODO: > iterate over centers of mass in ascending distance to face center.
+
+
+
+        # TODO: > if nearest 4 stickers found find next 4 nearest
+
+
+
+        # TODO: > if dist to any mass center > 2*min(dist(center0, center_nearest)) : too far away
+
+
+
+        # TODO: if missing sticker or too far: new thresh and repeat cube face
+
+
+
+        # TODO: allgemeines daten-array bereitstellen (koordinaten,farbdaten)
+
+
+        ############################################################################################## i-Schleife vorbei
 
     # sticker- nach center-farben zuordnen und wertebereich ändern (U..B anstatt 0..5))
     CubeDefStr = ""
@@ -140,7 +237,6 @@ class Scanner(object):
 
     def sth(self):
         pass
-
 
 def get_camera_settings(cam):
     print "########## current camera settings ##### (unset not shown)"
@@ -203,10 +299,8 @@ def get_camera_settings(cam):
         if res[key] != -1:
             print "{}:\t{}".format(key[4:], res[key]).expandtabs(13)
 
-
 def set_camera(cam):
     pass
-
 
 def set_sliders():
     cv2.namedWindow('marking')
@@ -217,17 +311,18 @@ def set_sliders():
     cv2.createTrackbar('V Lower', 'marking', 0, 255, nothing)
     cv2.createTrackbar('V Higher', 'marking', 255, 255, nothing)
 
-
 def nothing(x):
     pass
 
-
-if __name__ == "__main__":
+def slider_test():
+    """
+    not working
+    """
     # print "manual cube scan started."
     # retval, cube = scan_cube()
     # print "scan result: %s (%ss)" % (cube, len(cube))
     vcap = cv2.VideoCapture(0)
-    set_sliders()
+    # set_sliders()
 
     while True:
         _, img = vcap.read()
@@ -247,7 +342,7 @@ if __name__ == "__main__":
 
         img_bin = cv2.inRange(hsv, LowerRegion, upperRegion)
 
-        kernel = np.ones((3,3), "uint8")
+        kernel = np.ones((3, 3), "uint8")
 
         mask = cv2.morphologyEx(img_bin, cv2.MORPH_OPEN, kernel)
         mask = cv2.dilate(mask, kernel, iterations=1)
@@ -261,6 +356,5 @@ if __name__ == "__main__":
             cv2.destroyAllWindows()
             break
 
-
-    # get_camera_settings(vcap)
-    set_camera(vcap)
+if __name__ == "__main__":
+    scan_cube()

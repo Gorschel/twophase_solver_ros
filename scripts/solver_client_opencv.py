@@ -14,7 +14,7 @@ def cube_solver_client(cube):
         cube_solver = rospy.ServiceProxy('cube_solver', Solver)
         resp = cube_solver(cube)
         return resp
-    except rospy.ServiceException, e:
+    except rospy.ServiceException as e:
         print "Service call failed: %s"%e
 
 
