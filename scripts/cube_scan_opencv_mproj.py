@@ -103,28 +103,48 @@ def get_chars(idx):
     return chars.get(idx, "_")
 
 
+def imshow(i, x, winname, img):
+    if winname is not None:
+        try:
+            winname = str(i) + winname
+            cv2.namedWindow(winname)  # Create a named window
+            cv2.moveWindow(winname, 20+(x*350), 20+(i*350))  # Move it to (40,30)
+            cv2.imshow(winname, img)
+        except:
+            raise Exception("empty image")
+
+
 def scan_cube():
     """get CubeDefStr from actual Rubics cube, using opencv"""
     ### init
     data_arr = np.zeros(shape=(6, 9, 5), dtype=np.int16)
     centers = np.zeros(shape=(6, 3), dtype='int')
-    plot = range(0, 1)
+    plot = range(0, 5)
 
     ### Cube-faces loop
     for i in range(6):
 
         img_raw = load_image(i)
-        img = np.zeros(np.shape())
+        img = img_raw
 
+        """
         # find circular sticker on face
         output = img_raw.copy()
-        circles = cv2.HoughCircles(image=cv2.cvtColor(img_raw, cv2.COLOR_BGR2GRAY),
-                                   method=cv2.HOUGH_GRADIENT,
-                                   dp=1.5, minDist=500000,
-                                   minRadius=5, maxRadius=35)  # detect circles in the image
+        circles, n = None, 0
+
+        img_raw_gray = cv2.cvtColor(img_raw, cv2.COLOR_BGR2GRAY)
+        #img_raw_gray = cv2.medianBlur(img_raw_gray, 5)  # Reduce the noise to avoid false circle detection
+        while circles is None and n < 10:
+            circles = cv2.HoughCircles(image=img_raw_gray,
+                                       method=cv2.HOUGH_GRADIENT,
+                                       dp=1.2, minDist=500000,
+                                       param1=100,  # Upper threshold for the internal Canny edge detector.
+                                       param2=35,  # Threshold for center detection.
+                                       minRadius=5, maxRadius=35)
+            n += 1
         if circles is not None:  # ensure at least some circles were found
-            circles = np.round(circles[0, :]).astype("int")  # convert the (x, y) coordinates and radius of the circles to integers
-            for (x, y, r) in circles:  # loop over the (x, y) coordinates and radius of the circles
+            circs = np.round(circles[0, :]).astype("int")  # convert the (x, y) coordinates and radius of the circles to integers
+            for (x, y, r) in circs:  # loop over the (x, y) coordinates and radius of the circles
                 # draw the circle in the output image, then draw a rectangle corresponding to the center of the circle
                 cv2.circle(output, (x, y), r, (0, 255, 0), 1)
                 cv2.rectangle(output, (x - 1, y - 1), (x + 1, y + 1), (0, 128, 255), -1)
@@ -133,34 +153,36 @@ def scan_cube():
                 img = img_raw[y-cube_width:y+cube_width, x-cube_width:x+cube_width, :]  # y_min:y_max, x_min:x_max
             # show the output image
             if 0 in plot:
-                cv2.imshow(str(i) + "_circle", np.hstack([img_raw, output]))
-                cv2.imshow(str(i) + "_img", img)
+                imshow(i, 0, "_0_circle", np.hstack([img_raw, output]))
+                imshow(i, 3, "_0_img", img)
+        else:
+            raise Exception("[ResultError] no matching circles found in face " + str(Color(i)) + " image")
+        """
 
-        @HERE
-
-        ## farbraum trafos
+        # farbraum trafos
         img_hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
         img_lab = cv2.cvtColor(img, cv2.COLOR_BGR2Lab)
         img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-        ## binary image "schwarzes Würfelgitter"
-        # adaptive threshhold
         if 1 in plot:
-            cv2.imshow(str(i) + "_Lab" + str(i), img_lab)
-            cv2.imshow(str(i) + "_HSV", img_hsv[:, :, 2])
+            imshow(i, 4, "_1_GRAY", img_gray)
+            imshow(i, 5, "_1_HSV", img_hsv[:, :, 2])
 
-        # TODO: for cube 2 (carbon) HSV.V[195..205..255] -> black stickers
-
-
-
-        img_bin = img_gray.copy()
+        # TODO: for 2nd cube (carbon): HSV.V[195..205..255] -> black stickers
+        img_bin = np.zeros(img.shape, np.uint8)
         # 220..270° = blue -> 255*220/360..225*270/360 -> 156..191
+
+        # threshold for hsv
+        """
         lower = np.array([0, 0, 0], np.uint8)
         upper = np.array([255, 230, 100], np.uint8)
         cv2.inRange(img_hsv, lower, upper, img_bin)
+        """
+        blurred = cv2.GaussianBlur(img_gray, (5, 5), 0)
+        canny = cv2.Canny(blurred, 10, 200)
+        if 2 in plot:
+            imshow(i, 6, "_2_bin", canny)
 
-        if 1 in plot: cv2.imshow("1_thresh_value" + str(i), img_bin)
-        #img_bin_adapt = cv2.adaptiveThreshold(src=img_lab[:, :, 0], maxValue=255, adaptiveMethod=cv2.ADAPTIVE_THRESH_GAUSSIAN_C,thresholdType=cv2.THRESH_BINARY,blockSize=81,C=0)
+        # img_bin_adapt = cv2.adaptiveThreshold(src=img_lab[:, :, 0], maxValue=255, adaptiveMethod=cv2.ADAPTIVE_THRESH_GAUSSIAN_C,thresholdType=cv2.THRESH_BINARY,blockSize=81,C=0)
 
         # morphologische filter; iterations > 1 not working
         img_bin = cv2.morphologyEx(img_bin, cv2.MORPH_OPEN, np.ones((13, 13), np.uint8), iterations=1,
@@ -168,8 +190,7 @@ def scan_cube():
         img_bin = cv2.morphologyEx(img_bin, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8), iterations=1,
                                    borderType=cv2.MORPH_CROSS)
         if 3 in plot:
-            cv2.imshow("3_nach_morph" + str(i), img_bin)
-            cv2.waitKey(0)
+            imshow(i, 7, "_3_bin_morph", img_bin)
 
         # TODO: find contours
 
