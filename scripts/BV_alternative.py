@@ -2,7 +2,7 @@
 """
 Created on Fri Apr 29 12:20:31 2022
 
-@author: ekinc
+@author: ekinci hasan
 """
 
 # import opencv and numpy
