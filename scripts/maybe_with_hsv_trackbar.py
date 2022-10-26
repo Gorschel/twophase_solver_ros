@@ -1,15 +1,10 @@
 import cv2
-import cv2 as cv
-import nothing as nothing
 import numpy as np
+import pathlib
 
-file_path = ".\\images"
-custom_name = '\scan_Color.'
+file_path = 'images'
+custom_name = 'scan_Color.'
 c_color = ['U', 'R', 'F', 'D', 'L', 'B']
-
-# trackbar callback function to update HSV value
-def nothing(x):
-    pass
 
 
 def image_processing():
@@ -21,14 +16,14 @@ def image_processing():
         img = load_image(i)
 
         img_input = img.copy()
-        img_hsv = hsv(img_input, i)
+        img_mask = hsv_bin(img_input, i)
 
-        img_morph = morphological(img_hsv, i)
+        img_morph = morphological(img_mask, i)
 
         img_Contours = img.copy()
-        img_lab = cv.cvtColor(img, cv2.COLOR_BGR2LAB)
+        img_lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
 
-        contours, hierarchy = cv.findContours(img_morph, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+        contours, hierarchy = cv2.findContours(img_morph, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
         no_sticker = 0
         for cnt in contours:
@@ -37,11 +32,11 @@ def image_processing():
             channel_2_mean = 0
 
             # compute the center of the contour
-            M = cv.moments(cnt)
+            M = cv2.moments(cnt)
             cX = int(M["m10"] / M["m00"])
             cY = int(M["m01"] / M["m00"])
 
-            x, y, w, h = cv.boundingRect(cnt)
+            x, y, w, h = cv2.boundingRect(cnt)
             area = w * h
             if w > h:
                 width = w
@@ -52,8 +47,8 @@ def image_processing():
             aspect_ratio = width / height
             # conditions for a sticker, if true then find a sticker
             if 500 < area < 5000 and 0.70 < aspect_ratio < 1.3 and no_sticker != 9:
-                cv.rectangle(img_Contours, (x, y), (x + w, y + h), (0, 255, 0), 2)  # draw bounding box
-                cv.circle(img_Contours, (cX, cY), 3, (0, 0, 0), -1)  # draw circle (center)
+                cv2.rectangle(img_Contours, (x, y), (x + w, y + h), (0, 255, 0), 2)  # draw bounding box
+                cv2.circle(img_Contours, (cX, cY), 3, (0, 0, 0), -1)  # draw circle (center)
 
                 pX = x
                 pY = y
@@ -70,9 +65,9 @@ def image_processing():
 
                 # Mean value of the pixel colour values for the 3 channels (for the stickers)
                 no_pixel = w * h
-                channel_0_mean = int(round(channel_0_mean / no_pixel, 0)) * (100/255)
-                channel_1_mean = int(round(channel_1_mean / no_pixel, 0)) - 128
-                channel_2_mean = int(round(channel_2_mean / no_pixel, 0)) - 128
+                channel_0_mean = int(round(channel_0_mean / no_pixel, 0)) #* (100/255)
+                channel_1_mean = int(round(channel_1_mean / no_pixel, 0)) #- 128
+                channel_2_mean = int(round(channel_2_mean / no_pixel, 0)) #- 128
                 print(x, y, channel_0_mean, channel_1_mean, channel_2_mean)
 
                 # write the centroid-coordinates and the mean color-value of the 3 channels in an array
@@ -82,12 +77,13 @@ def image_processing():
                     data_arr[i][no_sticker][2] = channel_0_mean
                     data_arr[i][no_sticker][3] = channel_1_mean
                     data_arr[i][no_sticker][4] = channel_2_mean
-
                 no_sticker += 1
+            x_min_max = min(data_arr[i, :, 0]), max(data_arr[i, :, 0])
+            y_min_max = min(data_arr[i, :, 1]), max(data_arr[i, :, 1])
         print(" ")
-        cv.imshow("Contours: Face " + c_color[i], img_Contours)
-        cv.waitKey(0)
-        cv.destroyAllWindows()
+        cv2.imshow("Contours: Face " + c_color[i], img_Contours)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
         # Sort contour centroids according to image coordinates
         data_arr[i] = sort_data(np.copy(data_arr[i]))
 
@@ -114,22 +110,23 @@ def image_processing():
 
 
 def load_image(i):
-    fspath = file_path + custom_name + c_color[i] + ".png"
-    img = cv.imread(fspath, 1)
+    parent = pathlib.Path.cwd().parent
+    fspath = parent / file_path / (custom_name + c_color[i] + '.png')
+    img = cv2.imread(str(fspath), 1)
     # print(fspath)
     return img
 
 
-def hsv(img_in, i):
+def hsv_bin(img_in, i):
     # create a separate window named 'controls' for trackbar
-    cv2.namedWindow("marking", cv2.WINDOW_NORMAL);
-    cv2.createTrackbar('H Lower', 'marking', 0, 179, nothing)
-    cv2.createTrackbar('H Higher', 'marking', 179, 179, nothing)
-    cv2.createTrackbar('S Lower', 'marking', 0, 255, nothing)
-    cv2.createTrackbar('S Higher', 'marking', 255, 255, nothing)
-    cv2.createTrackbar('V Lower', 'marking', 100, 255, nothing)
-    cv2.createTrackbar('V Higher', 'marking', 255, 255, nothing)
-    cv2.resizeWindow("marking", 300, 100);
+    cv2.namedWindow("marking", cv2.WINDOW_NORMAL)
+    cv2.createTrackbar('H Lower', 'marking', 0, 179, lambda *args: None)
+    cv2.createTrackbar('H Higher', 'marking', 179, 179, lambda *args: None)
+    cv2.createTrackbar('S Lower', 'marking', 0, 255, lambda *args: None)
+    cv2.createTrackbar('S Higher', 'marking', 255, 255, lambda *args: None)
+    cv2.createTrackbar('V Lower', 'marking', 100, 255, lambda *args: None)
+    cv2.createTrackbar('V Higher', 'marking', 255, 255, lambda *args: None)
+    cv2.resizeWindow("marking", 300, 100)
     # function: looking for cube with the help of HSV colour space
     while True:
         hMin = 0
@@ -150,15 +147,18 @@ def hsv(img_in, i):
         lower = np.array([hMin, sMin, vMin])
         upper = np.array([hMax, sMax, vMax])
 
-        hsv_img = cv.cvtColor(img_in, cv.COLOR_BGR2HSV)
-        mask = cv.inRange(hsv_img, lower, upper)
+        hsv_img = cv2.cvtColor(img_in, cv2.COLOR_BGR2HSV)
+        mask = cv2.inRange(hsv_img, lower, upper)
 
-        cv.imshow("Mask: Face " + c_color[i], mask)
+        # TODO: use inverse mask, morph, get contours, blobdetector, on-line-checking
+        # mask = cv2.bitwise_not(mask)
+
+        cv2.imshow("Mask: Face " + c_color[i], mask)
         k = cv2.waitKey(1) & 0xFF
         if k == 27:
-            cv.waitKey(0)
+            cv2.waitKey(0)
             return mask
-    cv2.destroyAllWindows()
+    #cv2.destroyAllWindows()
 
 
 # function: morphological filter
@@ -166,14 +166,14 @@ def morphological(img_in, i):
     # perform erosion on the image
     kernel_size = 20
     kernel = np.ones((kernel_size, kernel_size), np.uint8)
-    img_erosion = cv.erode(img_in, kernel, iterations=1)
-    cv.imshow("Erosion: Face " + c_color[i], img_erosion)
+    img_erosion = cv2.erode(img_in, kernel, iterations=1)
+    cv2.imshow("Erosion: Face " + c_color[i], img_erosion)
 
     # perform dilation on the image
     kernel_size = 11
     kernel = np.ones((kernel_size, kernel_size), np.uint8)
-    img_dilation = cv.dilate(img_erosion, kernel, iterations=1)
-    cv.imshow("Dilation: Face " + c_color[i], img_dilation)
+    img_dilation = cv2.dilate(img_erosion, kernel, iterations=1)
+    cv2.imshow("Dilation: Face " + c_color[i], img_dilation)
     return img_dilation
 
 
@@ -237,4 +237,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-    cv.waitKey(0)
+    cv2.waitKey(0)
