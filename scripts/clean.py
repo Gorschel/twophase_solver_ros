@@ -1,6 +1,6 @@
-import cv2
+import cv2, os
 import numpy as np
-import rospkg
+
 import pathlib
 
 from twophase_solver.enums import Color
@@ -11,18 +11,25 @@ show_hsv = False
 show_morphological = False
 show_roi_cube = False
 
-rospack = rospkg.RosPack()
-fpath = rospack.get_path('twophase_solver_ros') + '/images/'
+try:
+    import rospkg
+
+    rospack = rospkg.RosPack()
+    fpath = rospack.get_path('twophase_solver_ros') + '/images/'
+except Exception as e:
+    print(e)
+    fpath = '/home/student/catkin_ws/src/twophase_solver_ros/images/'
+
 customname = 'scan_'
 
-verbosity = True
+verbosity = False
 
 
 def image_processing(i, img):
     if show_image_processing:
-        cv2.imshow("Input " + str(Color(i)), img)
         if verbosity:
-            cv2.waitKey(0)
+            cv2.imshow("Input " + str(Color(i)), img)
+            
         cv2.destroyAllWindows()
 
     ''' Stickers (Colour) search and binarisation via HSV channel '''
@@ -34,8 +41,9 @@ def image_processing(i, img):
     ''' bitwise OR of two images'''
     bitwiseOr = cv2.bitwise_or(img_hsv_coloured, img_hsv_white)
     if show_image_processing:
-        cv2.imshow("OR: " + str(Color(i)), bitwiseOr)
-        if verbosity: cv2.waitKey(0)
+        if verbosity:
+            cv2.imshow("OR: " + str(Color(i)), bitwiseOr)
+            
         cv2.destroyAllWindows()
 
     ''' perform morphological filter (Erosion / Dilation) '''
@@ -46,15 +54,12 @@ def image_processing(i, img):
 
 def load_image(i):
     filepath = fpath + customname + str(Color(i)) + '.png'
-    img = cv2.imread(filepath, cv2.IMREAD_COLOR)
+    if os.path.isfile(filepath):
+        img = cv2.imread(filepath, cv2.IMREAD_COLOR)
+    else:
+        raise Exception('file {} not a file'.format(filepath))
     print "image loaded: " + filepath
     return img
-
-
-def save_image(img, i):
-    filepath = fpath + customname + str(Color(i)) + '.png'
-    cv2.imwrite(filepath, img)
-    print "image saved: " + filepath
 
 
 # function: looking for cube with the help of HSV colour space
@@ -62,8 +67,8 @@ def hsv(img_in, string, hsv_trackbar, hMin, hMax, sMin, sMax, vMin, vMax):
     """ Convert from RGB Image to HSV"""
     hsv_coloured = cv2.cvtColor(img_in, cv2.COLOR_BGR2HSV)
     if show_hsv:
-        cv2.imshow("HSV Image: " + string, hsv_coloured)
-        # cv2.waitKey(0)
+        if verbosity:cv2.imshow("HSV Image: " + string, hsv_coloured)
+        # 
         cv2.destroyAllWindows()
 
     if hsv_trackbar:
@@ -95,7 +100,7 @@ def hsv(img_in, string, hsv_trackbar, hMin, hMax, sMin, sMax, vMin, vMax):
         mask = cv2.inRange(hsv_coloured, lower, upper)
         # mask1 = cv2.bitwise_not(mask1)
         if show_hsv:
-            cv2.imshow("Mask. " + string, mask)
+            if verbosity:cv2.imshow("Mask. " + string, mask)
 
         # Defining the kernel size
         kernelSize = 1
@@ -103,13 +108,13 @@ def hsv(img_in, string, hsv_trackbar, hMin, hMax, sMin, sMax, vMin, vMax):
         medianBlurred_mask = cv2.medianBlur(mask, kernelSize)
         if show_hsv:
             cv2.imshow("Median blurred Mask. " + string, medianBlurred_mask)
-        # cv2.waitKey(0)
+        # 
         if cnt == 10:
             return medianBlurred_mask
         if hsv_trackbar:
             k = cv2.waitKey(1) & 0xFF
             if k == 27:
-                cv2.waitKey(0)
+                
                 return medianBlurred_mask
         else:
             return medianBlurred_mask
@@ -122,17 +127,16 @@ def morphological(img_bitwise, i):
     kernel = np.ones((kernel_size, kernel_size), np.uint8)
     img_erosion = cv2.erode(img_bitwise, kernel, iterations=1)
     if show_morphological:
-        cv2.imshow("Erosion: " + str(Color(i)), img_erosion)
-    if verbosity:
-        cv2.waitKey(0)
+        if verbosity:
+            cv2.imshow("Erosion: " + str(Color(i)), img_erosion)
 
     # perform dilation on the image
     kernel_size = 10
     kernel = np.ones((kernel_size, kernel_size), np.uint8)
     img_dilation = cv2.dilate(img_erosion, kernel, iterations=1)
     if show_morphological:
-        cv2.imshow("Dilation: " + str(Color(i)), img_dilation)
-        # cv2.waitKey(0)
+        if verbosity:cv2.imshow("Dilation: " + str(Color(i)), img_dilation)
+        # 
         cv2.destroyAllWindows()
     return img_erosion
 
@@ -145,6 +149,7 @@ def find_cube_pos(i, img_input, img_cont):
     contours, hierarchy = cv2.findContours(img_cont, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
     area_values = []
+    cX, cY = 0, 0
     aspect_ratio_min = 0.9
     aspect_ratio_max = 1.4
 
@@ -171,12 +176,14 @@ def find_cube_pos(i, img_input, img_cont):
         aspect_ratio = float(width / height)
         if aspect_ratio_min < aspect_ratio < aspect_ratio_max and len(approx) == 4:
             area_values.append(area)
-            print("Area " + str(area) + "  All cx: " + str(cX) + " cY: " + str(cY) + " Aspect Ratio " + str(
+            if verbosity: print(
+                    "Area " + str(area) + "  All cx: " + str(cX) + " cY: " + str(cY) + " Aspect Ratio " + str(
                 aspect_ratio))
 
     # calculate the median of the founded contours
     area_median = np.median(area_values)
-    print("Area Median", area_median)
+    if verbosity:
+        print("Area Median", area_median)
 
     cx_values = []
     cy_values = []
@@ -225,22 +232,23 @@ def find_cube_pos(i, img_input, img_cont):
             cv2.circle(img_drawing, (cX, cY), 3, (0, 0, 0), -1)  # draw circle (center)
             cv2.putText(img_drawing, str(no_sticker), (cX - 20, cY - 20), cv2.FONT_HERSHEY_TRIPLEX, 0.5,
                         (250, 250, 100), 1)
-            print("No Sticker: " + str(no_sticker) + " cx: " + str(cX) + " cY: " + str(cY) + " aspectratio " + str(
+            if verbosity: print("No Sticker: " + str(no_sticker) + " cx: " + str(cX) + " cY: " + str(
+                cY) + " aspectratio " + str(
                 aspect_ratio))
             no_sticker += 1
 
     if no_sticker != 0:
 
         # cv2.imshow("Contours with good conditions", img_drawing)
-        # cv2.waitKey(0)
+        # 
 
         # Sorting the x-coordinates of the contours
         result_x = sorted(conturen, key=lambda l: l[0])
-        print("Sorted center-X coordinates: ", result_x)
+        if verbosity: print("Sorted center-X coordinates: ", result_x)
 
         # Sorting the x-coordinates of the contours
         result_y = sorted(conturen, key=lambda l: l[1])
-        print("Sorted center-Y coordinates: ", result_y)
+        if verbosity: print("Sorted center-Y coordinates: ", result_y)
 
         # calculate the Median of the center coordinates, width and height of the contours
         cX_median = np.median(cx_values)
@@ -250,15 +258,15 @@ def find_cube_pos(i, img_input, img_cont):
 
         # check if the contours have neighbours in the x-coordinate
         index_contour_x = nearest_contours(result_x, cX_median, width_median, 0)
-        print("index", index_contour_x)
+        if verbosity: print("index", index_contour_x)
 
         # check if the contours have neighbours in the y-coordinate
         index_contour_y = nearest_contours(result_y, cY_median, height_median, 1)
-        print("index y", index_contour_y)
+        if verbosity: print("index y", index_contour_y)
 
         # write the neighbour contours in an array
         result = set(index_contour_x + index_contour_y)
-        print("Result", result)
+        if verbosity: print("Result", result)
 
         image_stickers_binary = np.zeros((img_draw.shape[0], img_draw.shape[1], 1), dtype=np.uint8)
 
@@ -299,23 +307,22 @@ def find_cube_pos(i, img_input, img_cont):
                 cv2.circle(img_draw, (cX, cY), 3, (0, 0, 0), -1)  # draw circle (center)
                 cv2.putText(img_draw, str(no_sticker), (cX - 20, cY - 20), cv2.FONT_HERSHEY_TRIPLEX, 0.5,
                             (250, 250, 100), 1)
-                print("No Sticker: " + str(no_sticker) + " cx: " + str(cX) + " cY: " + str(cY) + " Aspect Ratio " + str(
+                if verbosity: print("No Sticker: " + str(no_sticker) + " cx: " + str(cX) + " cY: " + str(
+                    cY) + " Aspect Ratio " + str(
                     aspect_ratio))
 
                 cv2.rectangle(image_stickers_binary, (x, y), (x + w, y + h), 255, 2)  # draw bounding box
 
-        cv2.imshow("Neighbour Contours Image", img_draw)
+        if verbosity:cv2.imshow("Neighbour Contours Image", img_draw)
         # cv2.imshow("Neighbour Contours Binary Image", image_stickers_binary)
-
-        save_image(image_stickers_binary, i)
 
         cx_median = np.median(cx_values)
         cy_median = np.median(cy_values)
 
-        print("cx median", cx_median)
-        print("cy median", cy_median)
-
-        cv2.waitKey(0)
+        if verbosity:
+            print("cx median", cx_median)
+            print("cy median", cy_median)
+            
         # cv2.destroyAllWindows()
         return cx_values, cy_values, width_values, height_values, image_stickers_binary, rect_sticker
 
@@ -397,16 +404,13 @@ def roi_cube(i, img_in_bgr, image_stickers_binary, cX_values, cY_values, width_v
         thickness=3
     )
 
-    if show_roi_cube:
+    if show_roi_cube and verbosity:
         cv2.imshow("Rectangle around ROI " + str(Color(i)), img_in_bgr)  # Image with drawn contours
-        if verbosity:
-            cv2.waitKey(0)
+
         img_roi = img_in_bgr[start_cube_y:end_cube_y, start_cube_x:end_cube_x]
         roi = image_stickers_binary[start_cube_y:end_cube_y, start_cube_x:end_cube_x]
         cv2.imshow("ROI " + str(Color(i)), roi)
         cv2.imshow("ROI BGR: " + str(Color(i)), img_roi)
-        if verbosity:
-            cv2.waitKey(0)
 
 
 def min_max_coordinates(i, copy_img, cX_values, cY_values, width_values, height_values, rect_sticker):
@@ -459,13 +463,13 @@ def min_max_coordinates(i, copy_img, cX_values, cY_values, width_values, height_
     for stickers in stickers_rectangle:
         x1, y1, x2, y2 = stickers
         cv2.rectangle(img_in_bgr, (int(x1), int(y1)), (int(x2), int(y2)), (180, 95, 180), 2)
-    cv2.imshow("Region for color samples: " + str(Color(i)), img_in_bgr)
-    if verbosity:
-        cv2.waitKey(0)
+        if verbosity:
+            cv2.imshow("Region for color samples: " + str(Color(i)), img_in_bgr)
+            
     return stickers_rectangle
 
 
-def colour_samples(i, copy_img, stickers, data_arr):
+def color_samples(i, copy_img, stickers, data_arr):
     # copy input image
     src_img = copy_img.copy()
     # convert image from bgr to lab
@@ -499,7 +503,7 @@ def sticker_colours(data_arr):
             value = data_arr[i][r][2:]  # current sticker color info
             idx, color = find_nearest(centers, value)
             CubeDefStr += get_chars(idx)
-    cv2.waitKey(0)
+    
     cv2.destroyAllWindows()
     return_val = 0  # placeholder
     return return_val, CubeDefStr
@@ -545,7 +549,7 @@ def scan_cube():
         stickers = min_max_coordinates(i, copy_img, cX, cY, width_values, height_values, rect_sticker)
         cv2.destroyAllWindows()
         # taking colour samples from stickers
-        data_arr = colour_samples(i, copy_img, stickers, data_arr)
+        data_arr = color_samples(i, copy_img, stickers, data_arr)
     # determining the colours
     return_val, CubeDefStr = sticker_colours(data_arr)
     return None, CubeDefStr
@@ -557,4 +561,4 @@ if __name__ == "__main__":
     _, cube = scan_cube()
     print(cube)
     print "scan result: %s (%ss)" % (cube, len(cube))
-    cv2.waitKey(0)
+    

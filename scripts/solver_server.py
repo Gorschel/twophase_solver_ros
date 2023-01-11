@@ -9,7 +9,7 @@ from twophase_solver_ros.srv import Solver, SolverResponse
 
 def check_solution(solStr):
     """check for errors and split movecount from solution string"""
-    print('checking solution')
+    print('checking solution: {}'.format(solStr))
     if '(0f)' in solStr:
         print('no solution')
         solution = solStr
@@ -29,11 +29,11 @@ def handle_solve(req):
     retval, cube_def_str = scan_cube()
     print "\ncube-state scanned: {}".format(cube_def_str)
     print "\nfinding solution.."
-    sol_str = solve(cube_def_str)  # twophase algorithm
+    sol_str = solve(cubestring=cube_def_str, max_length=1000, timeout=50)  # twophase algorithm
     if sol_str == 'UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB':
         return SolverResponse(0, '')
     solution, movecount = check_solution(sol_str)  # check for errors
-    print('response: {} {}'.format(movecount, solution))
+    #print('response: {} {}'.format(movecount, solution))
     return SolverResponse(movecount, solution)
 
 
