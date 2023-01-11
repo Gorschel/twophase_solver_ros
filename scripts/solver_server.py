@@ -2,14 +2,19 @@
 # coding: utf-8
 
 import rospy
-from cube_scan_opencv import scan_cube
+from clean import scan_cube
 from twophase_solver.solver import solve  # actual twophase solver algorithm
 from twophase_solver_ros.srv import Solver, SolverResponse
 
 
 def check_solution(solStr):
     """check for errors and split movecount from solution string"""
-    if solStr[len(solStr) - 2:] == 'f)':
+    print('checking solution')
+    if '(0f)' in solStr:
+        print('no solution')
+        solution = solStr
+        movecount = 0
+    elif solStr[len(solStr) - 2:] == 'f)':
         print "\nSolution found: %s" % (solStr)
         movecount = int(solStr[solStr.find('(') + 1: len(solStr) - 2])
         solution = solStr[: len(solStr) - 6]
@@ -22,9 +27,13 @@ def check_solution(solStr):
 def handle_solve(req):
     print "\nstarting image processing.."
     retval, cube_def_str = scan_cube()
+    print "\ncube-state scanned: {}".format(cube_def_str)
     print "\nfinding solution.."
     sol_str = solve(cube_def_str)  # twophase algorithm
+    if sol_str == 'UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB':
+        return SolverResponse(0, '')
     solution, movecount = check_solution(sol_str)  # check for errors
+    print('response: {} {}'.format(movecount, solution))
     return SolverResponse(movecount, solution)
 
 
