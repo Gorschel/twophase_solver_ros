@@ -29,7 +29,7 @@ def image_processing(i, img):
     if show_image_processing:
         if verbosity:
             cv2.imshow("Input " + str(Color(i)), img)
-            
+
         cv2.destroyAllWindows()
 
     ''' Stickers (Colour) search and binarisation via HSV channel '''
@@ -43,7 +43,7 @@ def image_processing(i, img):
     if show_image_processing:
         if verbosity:
             cv2.imshow("OR: " + str(Color(i)), bitwiseOr)
-            
+
         cv2.destroyAllWindows()
 
     ''' perform morphological filter (Erosion / Dilation) '''
@@ -67,7 +67,8 @@ def hsv(img_in, string, hsv_trackbar, hMin, hMax, sMin, sMax, vMin, vMax):
     """ Convert from RGB Image to HSV"""
     hsv_coloured = cv2.cvtColor(img_in, cv2.COLOR_BGR2HSV)
     if show_hsv:
-        if verbosity:cv2.imshow("HSV Image: " + string, hsv_coloured)
+        if verbosity:
+            cv2.imshow("HSV Image: " + string, hsv_coloured)
         # 
         cv2.destroyAllWindows()
 
@@ -100,7 +101,8 @@ def hsv(img_in, string, hsv_trackbar, hMin, hMax, sMin, sMax, vMin, vMax):
         mask = cv2.inRange(hsv_coloured, lower, upper)
         # mask1 = cv2.bitwise_not(mask1)
         if show_hsv:
-            if verbosity:cv2.imshow("Mask. " + string, mask)
+            if verbosity:
+                cv2.imshow("Mask. " + string, mask)
 
         # Defining the kernel size
         kernelSize = 1
@@ -114,7 +116,6 @@ def hsv(img_in, string, hsv_trackbar, hMin, hMax, sMin, sMax, vMin, vMax):
         if hsv_trackbar:
             k = cv2.waitKey(1) & 0xFF
             if k == 27:
-                
                 return medianBlurred_mask
         else:
             return medianBlurred_mask
@@ -123,7 +124,7 @@ def hsv(img_in, string, hsv_trackbar, hMin, hMax, sMin, sMax, vMin, vMax):
 
 def morphological(img_bitwise, i):
     # perform erosion on the image
-    kernel_size = 15
+    kernel_size = 20
     kernel = np.ones((kernel_size, kernel_size), np.uint8)
     img_erosion = cv2.erode(img_bitwise, kernel, iterations=1)
     if show_morphological:
@@ -131,17 +132,17 @@ def morphological(img_bitwise, i):
             cv2.imshow("Erosion: " + str(Color(i)), img_erosion)
 
     # perform dilation on the image
-    kernel_size = 10
+    kernel_size = 20
     kernel = np.ones((kernel_size, kernel_size), np.uint8)
     img_dilation = cv2.dilate(img_erosion, kernel, iterations=1)
     if show_morphological:
-        if verbosity:cv2.imshow("Dilation: " + str(Color(i)), img_dilation)
-        # 
+        if verbosity:
+            cv2.imshow("Dilation: " + str(Color(i)), img_dilation)
         cv2.destroyAllWindows()
     return img_erosion
 
 
-def find_cube_pos(i, img_input, img_cont):
+def find_sticker_pos(i, img_input, img_cont):
     all_cont = []
     img_draw = img_input.copy()
     img_drawing = img_input.copy()
@@ -232,21 +233,21 @@ def find_cube_pos(i, img_input, img_cont):
             cv2.circle(img_drawing, (cX, cY), 3, (0, 0, 0), -1)  # draw circle (center)
             cv2.putText(img_drawing, str(no_sticker), (cX - 20, cY - 20), cv2.FONT_HERSHEY_TRIPLEX, 0.5,
                         (250, 250, 100), 1)
-            if verbosity: print("No Sticker: " + str(no_sticker) + " cx: " + str(cX) + " cY: " + str(
-                cY) + " aspectratio " + str(
-                aspect_ratio))
+            if verbosity:
+                print("No Sticker: " + str(no_sticker) + " cx: " + str(cX) + " cY: " + str(cY) + " aspectratio " + str(
+                    aspect_ratio))
             no_sticker += 1
-
     if no_sticker != 0:
         cv2.imshow("Contours with good conditions", img_drawing)
 
         # Sorting the x-coordinates of the contours
         result_x = sorted(conturen, key=lambda l: l[0])
-        if verbosity: print("Sorted center-X coordinates: ", result_x)
-
+        if verbosity:
+            print("Sorted center-X coordinates: ", result_x)
         # Sorting the x-coordinates of the contours
         result_y = sorted(conturen, key=lambda l: l[1])
-        if verbosity: print("Sorted center-Y coordinates: ", result_y)
+        if verbosity:
+            print("Sorted center-Y coordinates: ", result_y)
 
         # calculate the Median of the center coordinates, width and height of the contours
         cX_median = np.median(cx_values)
@@ -256,15 +257,18 @@ def find_cube_pos(i, img_input, img_cont):
 
         # check if the contours have neighbours in the x-coordinate
         index_contour_x = nearest_contours(result_x, cX_median, width_median, 0)
-        if verbosity: print("index", index_contour_x)
+        if verbosity:
+            print("index", index_contour_x)
 
         # check if the contours have neighbours in the y-coordinate
         index_contour_y = nearest_contours(result_y, cY_median, height_median, 1)
-        if verbosity: print("index y", index_contour_y)
+        if verbosity:
+            print("index y", index_contour_y)
 
         # write the neighbour contours in an array
         result = set(index_contour_x + index_contour_y)
-        if verbosity: print("Result", result)
+        if verbosity:
+            print("Result", result)
 
         image_stickers_binary = np.zeros((img_draw.shape[0], img_draw.shape[1], 1), dtype=np.uint8)
 
@@ -305,14 +309,15 @@ def find_cube_pos(i, img_input, img_cont):
                 cv2.circle(img_draw, (cX, cY), 3, (0, 0, 0), -1)  # draw circle (center)
                 cv2.putText(img_draw, str(no_sticker), (cX - 20, cY - 20), cv2.FONT_HERSHEY_TRIPLEX, 0.5,
                             (250, 250, 100), 1)
-                if verbosity: print("No Sticker: " + str(no_sticker) + " cx: " + str(cX) + " cY: " + str(
-                    cY) + " Aspect Ratio " + str(
-                    aspect_ratio))
+                if verbosity:
+                    print("No Sticker: " + str(no_sticker) + " cx: " + str(cX) + " cY: " + str(
+                        cY) + " Aspect Ratio " + str(aspect_ratio))
 
                 cv2.rectangle(image_stickers_binary, (x, y), (x + w, y + h), 255, 2)  # draw bounding box
 
-        if verbosity:cv2.imshow("Neighbour Contours Image", img_draw)
-        # cv2.imshow("Neighbour Contours Binary Image", image_stickers_binary)
+        if verbosity:
+            cv2.imshow("Neighbour Contours Image", img_draw)
+        cv2.imshow("Neighbour Contours Binary Image", image_stickers_binary)
 
         cx_median = np.median(cx_values)
         cy_median = np.median(cy_values)
@@ -320,7 +325,7 @@ def find_cube_pos(i, img_input, img_cont):
         if verbosity:
             print("cx median", cx_median)
             print("cy median", cy_median)
-            
+
         # cv2.destroyAllWindows()
         return cx_values, cy_values, width_values, height_values, image_stickers_binary, rect_sticker
 
@@ -360,14 +365,16 @@ def roi_cube(i, img_in_bgr, image_stickers_binary, cX_values, cY_values, width_v
     # Median of all center values
     cX_Median = np.median(cX_values)
     cY_Median = np.median(cY_values)
-    if verbosity: print("Cx_median", cX_Median)
-    if verbosity: print("Cy_median", cY_Median)
+    if verbosity:
+        print("Cx_median", cX_Median)
+        print("Cy_median", cY_Median)
 
     # deviation of the width and height values of all contours
     cX_deviation = np.median(width_values)
     cY_deviation = np.median(height_values)
-    if verbosity: print("Cx_deviation", cX_deviation)
-    if verbosity: print("Cy_deviation", cY_deviation)
+    if verbosity:
+        print("Cx_deviation", cX_deviation)
+        print("Cy_deviation", cY_deviation)
 
     # calculate the start- and end-x values of the roi cube
     factor = 2.8
@@ -411,6 +418,46 @@ def roi_cube(i, img_in_bgr, image_stickers_binary, cX_values, cY_values, width_v
         cv2.imshow("ROI BGR: " + str(Color(i)), img_roi)
 
 
+def get_tilt(cY, cX, w_val, h_val):
+    """
+    sums smallest point distances in x, y directions for all points
+    returns tilt-per-sticker in pixels
+    """
+    tilt_y, tilt_x, step = 0, 0, 0
+
+    # get point list
+    pts = []
+    for i in range(len(cY)):
+        x, y = cX[i], cY[i]
+        pts.append([x, y])
+
+    # iterate every point distance
+    dx1, dy1, sx1, sy1 = [], [], [], []
+    for x1, y1 in pts:
+        dx2, dy2, sx2, sy2 = [], [], [], []
+        for x2, y2 in pts:
+            if (x1, y1) != (x2, y2):
+                diff_x = x1 - x2 if y2 > y1 else x2 - x1
+                diff_y = y1 - y2 if x2 > x1 else y2 - y1
+                dx2.append(diff_x)
+                dy2.append(diff_y)
+        mdx = np.mean([d for d in dx2 if abs(d) <= w_val / 2])
+        mdy = np.mean([d for d in dy2 if abs(d) <= h_val / 2])
+        # TODO (main): distance values dont work for slanted cube
+        sx = np.min([d for d in dx2 if abs(d) > w_val / 2])
+        sy = np.min([d for d in dy2 if abs(d) > h_val / 2])
+        dx1.append(mdx)
+        dy1.append(mdy)
+        sx1.append(abs(sx))
+        sy1.append(abs(sy))
+    tilt_x = np.mean(dx1)
+    tilt_y = np.mean(dy1)
+    step_x = np.min([d for d in sx1 if w_val / 2 < abs(d) < w_val * 2.5])
+    step_y = np.min([d for d in sy1 if h_val / 2 < abs(d) < h_val * 2.5])
+
+    return tilt_y, tilt_x, step_y, step_x
+
+
 def min_max_coordinates(i, copy_img, cX_values, cY_values, width_values, height_values, rect_sticker):
     img_in_bgr = copy_img.copy()
     # calculate mean width and height values
@@ -426,45 +473,58 @@ def min_max_coordinates(i, copy_img, cX_values, cY_values, width_values, height_
     max_cY = float(max(cY_values))
 
     # calculate the stickers center position above min-cx, min-cy, max-cx, max-cy
-    step_x = mean_width * 1.8
-    step_y = mean_height * 1.8
-    point = []
+    step_x = mean_width * 2
+    step_y = mean_height * 2
+    points = []
     stickers_rectangle = []
-    for number in range(0, 9):
-        if number == 0:
-            point.append([min_cX, min_cY])
-        if number == 1:
-            point.append([min_cX + step_x, min_cY])
-        if number == 2:
-            point.append([max_cX, min_cY])
-        if number == 3:
-            point.append([min_cX, min_cY + step_y])
-        if number == 4:
-            point.append([min_cX + step_x, min_cY + step_y])
-        if number == 5:
-            point.append([max_cX, min_cY + step_y])
-        if number == 6:
-            point.append([min_cX, max_cY])
-        if number == 7:
-            point.append([min_cX + step_x, max_cY])
-        if number == 8:
-            point.append([max_cX, max_cY])
+
+    tilt_y, tilt_x, step_y, step_x = get_tilt(cY_values, cX_values, mean_width, mean_height)
+
+    for y in range(0, 3):
+        for x in range(0, 3):
+            a = int(min_cX + step_x * x)
+            b = int(min_cY + step_y * y)
+            points.append([a, b])
+    """
+    for n in range(0, 9):
+        if n == 0:
+            points.append([min_cX, min_cY])
+        if n == 1:
+            points.append([min_cX + step_x, min_cY])
+        if n == 2:
+            points.append([max_cX, min_cY])
+        if n == 3:
+            points.append([min_cX, min_cY + step_y])
+        if n == 4:
+            points.append([min_cX + step_x, min_cY + step_y])
+        if n == 5:
+            points.append([max_cX, min_cY + step_y])
+        if n == 6:
+            points.append([min_cX, max_cY])
+        if n == 7:
+            points.append([min_cX + step_x, max_cY])
+        if n == 8:
+            points.append([max_cX, max_cY])
+    """
 
     # calculate the contours of the stickers
     fact_width = mean_width / 4.5
     fact_height = mean_height / 4.5
-    for number in range(0, 9):
-        stickers_rectangle.append([round(point[number][0] - fact_width), round(point[number][1] - fact_height),
-                                   round(point[number][0] + fact_width), round(point[number][1] + fact_height)])
+    for n in range(0, 9):
+        stickers_rectangle.append([round(points[n][0] - fact_width),
+                                   round(points[n][1] - fact_height),
+                                   round(points[n][0] + fact_width),
+                                   round(points[n][1] + fact_height)])
 
     # draw the stickers in the image
     for stickers in stickers_rectangle:
         x1, y1, x2, y2 = stickers
         cv2.rectangle(img_in_bgr, (int(x1), int(y1)), (int(x2), int(y2)), (180, 95, 180), 2)
-        #if verbosity:
-        cv2.imshow("Region for color samples: " + str(Color(i)), img_in_bgr)
+        if verbosity:
+            cv2.imshow("Region for color samples: " + str(Color(i)), img_in_bgr)
+            cv2.imshow("Region for color samples: " + str(Color(i)), img_in_bgr)
     cv2.waitKey(0)
-            
+
     return stickers_rectangle
 
 
@@ -486,7 +546,7 @@ def color_samples(i, copy_img, stickers, data_arr):
 
         data_arr[i][no_sticker][0] = start_x + (end_x - start_x) / 2  # x-Pos
         data_arr[i][no_sticker][1] = start_y + (end_y - start_y) / 2  # y-Pos
-        data_arr[i][no_sticker][2] = average_color[0] * 100 / 255
+        data_arr[i][no_sticker][2] = average_color[0]  # * 100 / 255
         data_arr[i][no_sticker][3] = average_color[1] - 128
         data_arr[i][no_sticker][4] = average_color[2] - 128
     return data_arr
@@ -503,7 +563,7 @@ def sticker_colours(data_arr):
             value = data_arr[i][r][2:]  # current sticker color info
             idx, color = find_nearest(centers, value)
             CubeDefStr += get_chars(idx)
-    
+
     cv2.destroyAllWindows()
     return_val = 0  # placeholder
     return return_val, CubeDefStr
@@ -542,9 +602,10 @@ def scan_cube():
         # perform binarisation via HSV and morphological filter
         img_morph = image_processing(i, img_in)
         # find cube position and stickers
-        cX, cY, width_values, height_values, image_stickers_binary, rect_sticker = find_cube_pos(i, img_in, img_morph)
+        cX, cY, width_values, height_values, image_stickers_binary, rect_sticker = find_sticker_pos(i, img_in,
+                                                                                                    img_morph)
         # draw roi cube
-        roi_cube(i, img_in, image_stickers_binary, cX, cY, width_values, height_values)
+        # roi_cube(i, img_in, image_stickers_binary, cX, cY, width_values, height_values)
         # if not all stickers could be recognised --> find min and max x and y- coordinates of the stickers
         stickers = min_max_coordinates(i, copy_img, cX, cY, width_values, height_values, rect_sticker)
         cv2.destroyAllWindows()
@@ -561,4 +622,3 @@ if __name__ == "__main__":
     _, cube = scan_cube()
     print(cube)
     print "scan result: %s (%ss)" % (cube, len(cube))
-    

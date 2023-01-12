@@ -14,13 +14,14 @@ def check_solution(solStr):
         print('no solution')
         solution = solStr
         movecount = 0
-    elif solStr[len(solStr) - 2:] == 'f)':
+    elif solStr[-2:] == 'f)':
         print "\nSolution found: %s" % (solStr)
-        movecount = int(solStr[solStr.find('(') + 1: len(solStr) - 2])
-        solution = solStr[: len(solStr) - 6]
+        bracket = solStr.find('(')
+        movecount = int(solStr[bracket + 1: solStr.rindex('f')])
+        solution = solStr[: bracket - 1]
     else:
         movecount = 0
-        solution = solStr + '\nMaybe the cube faces were not oriented correctly.'
+        solution = solStr + ' \nMaybe the cube faces were not oriented correctly.'
     return solution, movecount
 
 
