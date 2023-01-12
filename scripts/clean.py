@@ -238,9 +238,7 @@ def find_cube_pos(i, img_input, img_cont):
             no_sticker += 1
 
     if no_sticker != 0:
-
-        # cv2.imshow("Contours with good conditions", img_drawing)
-        # 
+        cv2.imshow("Contours with good conditions", img_drawing)
 
         # Sorting the x-coordinates of the contours
         result_x = sorted(conturen, key=lambda l: l[0])
@@ -463,8 +461,9 @@ def min_max_coordinates(i, copy_img, cX_values, cY_values, width_values, height_
     for stickers in stickers_rectangle:
         x1, y1, x2, y2 = stickers
         cv2.rectangle(img_in_bgr, (int(x1), int(y1)), (int(x2), int(y2)), (180, 95, 180), 2)
-        if verbosity:
-            cv2.imshow("Region for color samples: " + str(Color(i)), img_in_bgr)
+        #if verbosity:
+        cv2.imshow("Region for color samples: " + str(Color(i)), img_in_bgr)
+    cv2.waitKey(0)
             
     return stickers_rectangle
 
@@ -481,7 +480,8 @@ def color_samples(i, copy_img, stickers, data_arr):
         end_x = int(stickers[no_sticker][2])  # end x-position
         end_y = int(stickers[no_sticker][3])  # end y-position
 
-        average_color_row = np.average(img_lab[start_y:end_y, start_x:end_x], axis=0)
+        probe = img_lab[start_y:end_y, start_x:end_x]
+        average_color_row = np.average(probe, axis=0)
         average_color = np.average(average_color_row, axis=0)
 
         data_arr[i][no_sticker][0] = start_x + (end_x - start_x) / 2  # x-Pos
