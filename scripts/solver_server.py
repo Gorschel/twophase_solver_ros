@@ -31,7 +31,7 @@ def handle_solve(req):
     if retval:
         print "\ncube-state scanned: {}".format(cube_def_str)
         print "\nfinding solution.."
-        sol_str = solve(cubestring=cube_def_str, max_length=5, timeout=15)  # twophase algorithm
+        sol_str = solve(cubestring=cube_def_str, max_length=5, timeout=5)  # twophase algorithm
         if sol_str == 'UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB':
             return SolverResponse(0, '')
         solution, movecount = check_solution(sol_str)  # check for errors

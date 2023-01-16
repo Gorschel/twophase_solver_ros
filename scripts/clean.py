@@ -459,7 +459,7 @@ def get_tilt(cY, cX, w_val, h_val):
     return tilt_y, tilt_x, step_y, step_x
 
 
-def min_max_coordinates(i, copy_img, cX_values, cY_values, width_values, height_values, rect_sticker, all_cont2):
+def reconstruct(i, copy_img, cX_values, cY_values, width_values, height_values, rect_sticker, all_cont2, angle):
     img_contours_all = copy_img.copy()
     img_contours_sample = copy_img.copy()
     # calculate mean width and height values
@@ -481,8 +481,9 @@ def min_max_coordinates(i, copy_img, cX_values, cY_values, width_values, height_
     stickers_all = []
     stickers_sample = []
 
-    tilt_y, tilt_x, step_y, step_x = get_tilt(cY_values, cX_values, mean_width, mean_height)
-
+    # tilt_y, tilt_x, _, _ = get_tilt(cY_values, cX_values, mean_width, mean_height)
+    tilt_x = np.sin(angle* 0.75) * step_x
+    tilt_y = np.sin(angle* 0.75) * step_y
     for y in range(0, 3):
         for x in range(0, 3):
             if x == 0 and y == 0:
@@ -618,7 +619,8 @@ def find_nearest(centers, value):
     centers = np.asarray(centers)
     dif = np.abs(np.subtract(centers, value))
     dev = np.sqrt(
-        np.power(dif[:, 0], 2) + np.power(dif[:, 1], 2) + np.power(dif[:, 2], 2))  # deviation between centre colours
+        #np.power(dif[:, 0], 2) + np.power(dif[:, 1], 2) + np.power(dif[:, 2], 2))  # deviation between all centre colors
+        np.power(dif[:, 1], 2) + np.power(dif[:, 2], 2))  # deviation between AB centre colors
     idx = dev.argmin()  # minimum
     return idx, centers[idx]
 
@@ -732,8 +734,8 @@ def scan_cube():
         # draw roi cube
         # roi_cube(i, img_in, image_stickers_binary, cX, cY, width_values, height_values)
         # if not all stickers could be recognised --> find min and max x and y- coordinates of the stickers
-        stickers, img_contours_all, img_contours_sample = min_max_coordinates(i, img_in2, cX, cY, width_values, height_values, rect_sticker, all_cont2)
-        final_imgs.append((img_contours_all, img_contours_sample))
+        stickers, img_cnts_all, img_cnts_sample = reconstruct(i, img_in2, cX, cY, width_values, height_values, rect_sticker, all_cont2, angle_sticker)
+        final_imgs.append((img_cnts_all, img_cnts_sample))
         cv2.destroyAllWindows()
         # taking colour samples from stickers
         data_arr = color_samples(i, img_in2, stickers, data_arr)
