@@ -10,9 +10,14 @@ a = cb.CubieCube()
 
 # ##### includes for ros support
 
-import rospkg
-rospack = rospkg.RosPack()
-fpath = rospack.get_path('twophase_solver_ros') + '/tables/'
+try:
+    import rospkg
+    rospack = rospkg.RosPack()
+    fpath = rospack.get_path('twophase_solver_ros') + '/tables/'
+    print fpath
+except rospkg.common.ResourceNotFound:
+    print("[WARNING] Rospkp cant find the package 'twophase_solver_ros' using fixed path instead")
+    fpath = "/home/student/catkin_ws/src/twophase_solver_ros/tables/"
 
 # ######################################### Move table for the twists of the corners. ##################################
 

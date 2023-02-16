@@ -17,9 +17,14 @@ edgeslice_depth = None
 
 # ##### includes for ros support
 
-import rospkg
-rospack = rospkg.RosPack()
-fpath = rospack.get_path('twophase_solver_ros') + '/tables/'
+try:
+    import rospkg
+    rospack = rospkg.RosPack()
+    fpath = rospack.get_path('twophase_solver_ros') + '/tables/'
+    print fpath
+except rospkg.common.ResourceNotFound:
+    print("[WARNING] Rospkp cant find the package 'twophase_solver_ros' using fixed path instead")
+    fpath = "/home/student/catkin_ws/src/twophase_solver_ros/tables/"
 
 # ####################### functions to extract or set values in the pruning tables #####################################
 

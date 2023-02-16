@@ -2,26 +2,26 @@
 # coding: utf-8
 
 import rospy
-from clean import scan_cube
+from image_processing import scan_cube
 from twophase_solver.solver import solve  # actual twophase solver algorithm
 from twophase_solver_ros.srv import Solver, SolverResponse
 
 
-def check_solution(solStr):
+def check_solution(sol_str):
     """check for errors and split movecount from solution string"""
-    print('checking solution: {}'.format(solStr))
-    if '(0f)' in solStr:
+    print('checking solution: {}'.format(sol_str))
+    if '(0f)' in sol_str:
         print('no solution')
-        solution = solStr
+        solution = sol_str
         movecount = 0
-    elif solStr[-2:] == 'f)':
-        print "\nSolution found: %s" % (solStr)
-        bracket = solStr.find('(')
-        movecount = int(solStr[bracket + 1: solStr.rindex('f')])
-        solution = solStr[: bracket - 1]
+    elif sol_str[-2:] == 'f)':
+        print "\nSolution found: %s" % (sol_str)
+        bracket = sol_str.find('(')
+        movecount = int(sol_str[bracket + 1: sol_str.rindex('f')])
+        solution = sol_str[: bracket - 1]
     else:
         movecount = 0
-        solution = solStr + ' \nMaybe the cube faces were not oriented correctly.'
+        solution = sol_str + ' \nMaybe the cube faces were not oriented correctly.'
     return solution, movecount
 
 
