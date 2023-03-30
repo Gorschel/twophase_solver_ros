@@ -13,17 +13,18 @@ try:
 except Exception as e:
     print(e)
     fpath = '/home/student/catkin_ws/src/twophase_solver_ros/images/'
-    #fpath = r"C:\Users\ekinc\Desktop\Python_Projects\images" + '\\'  # <-- CHANGES: auf Lab PC nur diese Zeile entfernen
+    # fpath = r"C:\Users\ekinc\Desktop\Python_Projects\images" + '\\'  # <-- CHANGES: auf Lab PC nur diese Zeile entfernen
 
 customname = 'scan_'
 
-#path_save = r"C:\Users\ekinc\Desktop\Python_Projects\save" + '\\'
+# path_save = r"C:\Users\ekinc\Desktop\Python_Projects\save" + '\\'
 
 # show images
 show_image_processing = False
 show_hsv = False
-show_morphological = False
+show_morphological = True
 show_roi_cube = False
+hsv_trackbar_loop = False
 
 verbosity = False
 
@@ -36,10 +37,11 @@ def image_processing(i, img):
         cv2.destroyAllWindows()
 
     ''' Stickers (Colour) search and binarisation via HSV channel '''
-    hsv_trackbar = False  # hsv trackbar activation flag
+    interactive_hsv_trackbar = False  # hsv trackbar activation flag
     img_input = img.copy()
-    img_hsv_coloured = hsv(img_input, 'coloured ' + str(Color(i)), hsv_trackbar, 0, 179, 99, 255, 50, 255)
-    img_hsv_white = hsv(img_input, "white and yellow " + str(Color(i)), hsv_trackbar, 0, 179, 0, 255, 107, 255)
+    img_hsv_coloured = hsv(img_input, 'coloured ' + str(Color(i)), interactive_hsv_trackbar, 0, 179, 99, 255, 50, 255)
+    img_hsv_white = hsv(img_input, "white and yellow " + str(Color(i)), interactive_hsv_trackbar, 0, 179, 0, 255, 107,
+                        255)
 
     ''' bitwise OR of two images'''
     bitwiseOr = cv2.bitwise_or(img_hsv_coloured, img_hsv_white)
@@ -49,26 +51,18 @@ def image_processing(i, img):
 
             cv2.destroyAllWindows()
 
-    #cv2.imshow("HSV Binarisation", bitwiseOr)  # LOSCHEN
-    #cv2.imwrite(path_save + 'binarisation.png', bitwiseOr)  # LOSCHEN
-    #cv2.waitKey(0)  # LOSCHEN
-
     ''' perform morphological filter (Erosion / Dilation) '''
     img_morph = morphological(bitwiseOr, i)
-
-    #cv2.imshow("morphological", img_morph)  # LOSCHEN
-    #cv2.imwrite(path_save + 'morphological.png', img_morph)  # LOSCHEN
-    #cv2.waitKey(0)  # LOSCHEN
 
     return img_morph
 
 
 def load_image(i):
     filepath = fpath + customname + str(Color(i)) + '.png'
-    if os.path.isfile(filepath):
+    if os.path.isfile(filepath) and cv2.haveImageReader(filepath):
         img = cv2.imread(filepath, cv2.IMREAD_COLOR)
     else:
-        raise Exception('file {} not a file'.format(filepath))
+        raise Exception('{} is not a file'.format(filepath))
     print "image loaded: " + filepath
     return img
 
@@ -80,7 +74,7 @@ def hsv(img_in, string, hsv_trackbar, hMin, hMax, sMin, sMax, vMin, vMax):
     if show_hsv:
         if verbosity:
             cv2.imshow("HSV Image: " + string, hsv_coloured)
-        #
+            #
             cv2.destroyAllWindows()
 
     if hsv_trackbar:
@@ -154,6 +148,10 @@ def morphological(img_bitwise, i):
 
 
 def find_sticker_pos(i, img_input, img_cont):
+    """
+    Get sticker positions.
+
+    """
     all_cont = []
     img_draw = img_input.copy()
     img_drawing = img_input.copy()
@@ -165,7 +163,7 @@ def find_sticker_pos(i, img_input, img_cont):
     aspect_ratio_min = 0.9
     aspect_ratio_max = 1.4
 
-    # this for loop is to get the area of the founded contours
+    # this for loop is to get the area of the found contours
     for cnt in contours:
         approx = cv2.approxPolyDP(cnt, 0.1 * cv2.arcLength(cnt, True), True)
 
@@ -331,10 +329,10 @@ def find_sticker_pos(i, img_input, img_cont):
 
         if verbosity:
             pass
-        #cv2.imshow("Neighbour Image", img_draw)
+        # cv2.imshow("Neighbour Image", img_draw)
 
-        #cv2.imwrite(path_save + 'Find.png', img_draw)  # LOSCHEN
-        #cv2.waitKey(0)  # LOSCHEN
+        # cv2.imwrite(path_save + 'Find.png', img_draw)  # LOSCHEN
+        # cv2.waitKey(0)  # LOSCHEN
 
         cx_median = np.median(cx_values)
         cy_median = np.median(cy_values)
@@ -460,7 +458,7 @@ def get_tilt(cY, cX, w_val, h_val):
         mdx = np.mean([d for d in dx2 if abs(d) <= w_val / 2])
         mdy = np.mean([d for d in dy2 if abs(d) <= h_val / 2])
         # TODO (main): distance values dont work for slanted cube
-        sx = np.median([d for d in dx2 if abs(d) > w_val / 2 and abs(d) < w_val * 2.5])
+        sx = np.median([d for d in dx2 if w_val / 2 < abs(d) < w_val * 2.5])
         sy = np.median([d for d in dy2 if abs(d) > h_val / 2])
         dx1.append(mdx)
         dy1.append(mdy)
@@ -474,7 +472,8 @@ def get_tilt(cY, cX, w_val, h_val):
     return tilt_y, tilt_x, step_y, step_x
 
 
-def reconstruct(i, copy_img, cX_values, cY_values, width_values, height_values, rect_sticker, all_cont2, step_x, delta_y, step_y):
+def reconstruct(i, copy_img, cX_values, cY_values, width_values, height_values, rect_sticker, all_cont2, step_x,
+                delta_y, step_y):
     img_contours_all = copy_img.copy()
     img_contours_sample = copy_img.copy()
     # calculate mean width and height values
@@ -491,7 +490,7 @@ def reconstruct(i, copy_img, cX_values, cY_values, width_values, height_values, 
 
     # calculate the stickers center position above min-cx, min-cy, max-cx, max-cy
     # step_x = mean_width * 2
-    #step_y = mean_height * 2
+    # step_y = mean_height * 2
     points = []
     stickers_all = []
     stickers_sample = []
@@ -522,7 +521,6 @@ def reconstruct(i, copy_img, cX_values, cY_values, width_values, height_values, 
         for index in range(len(cX_values)):
             # define a point
             point = (coordinate[0], coordinate[1])
-
 
             '''
             x = all_cont2[index][0]
@@ -589,16 +587,16 @@ def reconstruct(i, copy_img, cX_values, cY_values, width_values, height_values, 
         cv2.circle(img_contours_all, (coordinates[0], coordinates[1]), 3, (0, 0, 0), -1)  # draw circle (center)
         if verbosity:
             cv2.imshow("All Stickers: " + str(Color(i)), img_contours_all)
-            #cv2.imwrite(path_save + 'reconstruct.png', img_contours_all)  # LOSCHEN
-            #cv2.waitKey(0)  # LOSCHEN
+            # cv2.imwrite(path_save + 'reconstruct.png', img_contours_all)  # LOSCHEN
+            # cv2.waitKey(0)  # LOSCHEN
 
         # Bounding Boxes for samples
         x1, y1, x2, y2 = stickers_sample[index]
         cv2.rectangle(img_contours_sample, (int(x1), int(y1)), (int(x2), int(y2)), (238, 28, 247), 2)
         if verbosity:
             cv2.imshow("Stickers Sample: " + str(Color(i)), img_contours_sample)
-            #cv2.imwrite(path_save + 'sample.png', img_contours_sample)  # LOSCHEN
-            #cv2.waitKey(0)  # LOSCHEN
+            # cv2.imwrite(path_save + 'sample.png', img_contours_sample)  # LOSCHEN
+            # cv2.waitKey(0)  # LOSCHEN
 
         index = index + 1
     cv2.waitKey(0)
@@ -606,10 +604,8 @@ def reconstruct(i, copy_img, cX_values, cY_values, width_values, height_values, 
 
 
 def color_samples(i, copy_img, stickers, data_arr):
-    # copy input image
-    src_img = copy_img.copy()
     # convert image from bgr to lab
-    img_lab = cv2.cvtColor(src_img, cv2.COLOR_BGR2Lab)
+    img_lab = cv2.cvtColor(copy_img, cv2.COLOR_BGR2Lab)
     for no_sticker in range(9):
         # calculate the average color
         start_x = int(stickers[no_sticker][0])  # start x-position
@@ -618,14 +614,13 @@ def color_samples(i, copy_img, stickers, data_arr):
         end_y = int(stickers[no_sticker][3])  # end y-position
 
         probe = img_lab[start_y:end_y, start_x:end_x]
-        average_color_row = np.average(probe, axis=0)
-        average_color = np.average(average_color_row, axis=0)
+        average_colors = np.average(probe, axis=(0, 1))
 
         data_arr[i][no_sticker][0] = start_x + (end_x - start_x) / 2  # x-Pos
         data_arr[i][no_sticker][1] = start_y + (end_y - start_y) / 2  # y-Pos
-        data_arr[i][no_sticker][2] = average_color[0] * 100 / 255  # L
-        data_arr[i][no_sticker][3] = average_color[1] - 128 # a
-        data_arr[i][no_sticker][4] = average_color[2] - 128 # b
+        data_arr[i][no_sticker][2] = average_colors[0]  # * 100 / 255  # L
+        data_arr[i][no_sticker][3] = average_colors[1] - 128  # a
+        data_arr[i][no_sticker][4] = average_colors[2] - 128  # b
     return data_arr
 
 
@@ -668,6 +663,7 @@ def get_chars(idx):
 
 
 def slope_contours(cX, cY, h_val, w_val):
+    """was tut es und warum"""
     h_median = np.median(h_val)
     w_median = np.median(w_val)
 
@@ -691,9 +687,9 @@ def slope_contours(cX, cY, h_val, w_val):
         no_neighbour_y = True
         for x2, y2 in pts:
             if (x1, y1) != (x2, y2):
-                if abs(y1 - y2) < int(h_median):
+                if abs(y2 - y1) < int(h_median):
                     if x2 - x1 > 0:
-                        no_neighbour_x = False # if no neighbour in increasing x-direction
+                        no_neighbour_x = False  # if no neighbour in increasing x-direction
                         # Calculate angle
                         delta_y = y2 - y1
                         step_x = x2 - x1
@@ -704,7 +700,7 @@ def slope_contours(cX, cY, h_val, w_val):
                         angle = math.atan2(delta_y, step_x)
                         angle_arr.append(-1 * math.degrees(angle))
 
-                if abs(x1 - x2) < int(w_median):
+                if abs(x2 - x1) < int(w_median):
                     if y2 - y1 > 0:
                         no_neighbour_y = False  # if no neighbour in increasing y-direction
                         step_y = y2 - y1
@@ -744,10 +740,10 @@ def affine_transformation(angle_sticker, i, img_in, img_morph):
     # cv2.imshow('original Image', img_in)
     if verbosity:
         pass
-        #cv2.imshow('Rotated Image', rotated)
-    #cv2.waitKey(0)
-    #cv2.imwrite("Rotated.jpg, rotated_bgr)
-    #cv2.destroyAllWindows()
+        # cv2.imshow('Rotated Image', rotated)
+    # cv2.waitKey(0)
+    # cv2.imwrite("Rotated.jpg, rotated_bgr)
+    # cv2.destroyAllWindows()
 
     # Define the border color as black
     border_color = (255, 38, 255)
@@ -756,15 +752,15 @@ def affine_transformation(angle_sticker, i, img_in, img_morph):
     # rotated = cv2.copyMakeBorder(rotated, 50, 50, 50, 50, cv2.BORDER_CONSTANT, value=border_color)
 
     # cv2.imshow("Border Image", rotated)
-    #cv2.waitKey(0)
-    #cv2.destroyAllWindows()
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
     return rotated_bgr, rotated_morph
 
 
 def check_def_str(defstr, img_arr):
     if not all(defstr.count(letter.name) == 9 for letter in Color):
         print('Error. letters not evenly distributed')
-        #return False
+        # return False
         for i, img_tuple in enumerate(img_arr):
             c = Color(i).name
             img_reconstruct, img_samples = img_tuple
@@ -784,53 +780,34 @@ def scan_cube():
     for i in range(0, 6):
         # load current face image
         img_in = load_image(i)
-        #cv2.imshow("Input Image", img_in)                   # LOSCHEN
-        #cv2.imwrite(path_save + 'input.png', img_in)        # LOSCHEN
-        #cv2.waitKey(0)                                      # LOSCHEN
-        img_slope = img_in.copy()
+
         # perform binarisation via HSV and morphological filter
         img_morph = image_processing(i, img_in)
         # find cube position and stickers
-        cX, cY, width_values, height_values, image_stickers_binary, rect_sticker, all_cont = find_sticker_pos(i,
-                                                                                                              img_in,
-                                                                                                              img_morph)
+        cX, cY, width_values, height_values, _, _, _ = find_sticker_pos(i, img_in, img_morph)
 
-        #cv2.imshow("Image Morph look", img_morph)
-        #cv2.waitKey(0)
-        # new calculation for rotated image
         # find the slope of the cube with the calculation of the slope sticker
-        angle_sticker, step_x, delta_y, step_y = slope_contours(cX, cY, height_values, width_values)
+        angle_sticker, _, _, _ = slope_contours(cX, cY, height_values, width_values)
         img_in2, img_morph2 = affine_transformation(angle_sticker, i, img_in, img_morph)
-
-        #cv2.imshow("Affine", img_in2)  # LOSCHEN
-        #cv2.imshow("Rotated Morph", img_morph2)  # LOSCHEN
-        #cv2.imwrite(path_save + 'affine.png', img_in2)  # LOSCHEN
-        #cv2.waitKey(0)  # LOSCHEN
-
-
-       # img_morph2 = image_processing(i, img_in2)
-
-        #cv2.imshow("Morph2", img_morph2)  # LOSCHEN
-        #cv2.imwrite(path_save + 'morph2.png', img_morph2)  # LOSCHEN
-        #cv2.waitKey(0)  # LOSCHEN
 
         # find cube stickers
         cX, cY, width_values, height_values, image_stickers_binary, rect_sticker, all_cont2 = find_sticker_pos(i,
                                                                                                                img_in2,
                                                                                                                img_morph2)
 
-
-
         angle_sticker, step_x, delta_y, step_y = slope_contours(cX, cY, height_values, width_values)
         # draw roi cube
         # roi_cube(i, img_in, image_stickers_binary, cX, cY, width_values, height_values)
         # if not all stickers could be recognised --> find min and max x and y- coordinates of the stickers
-        stickers, img_cnts_all, img_cnts_sample = reconstruct(i, img_in2, cX, cY, width_values, height_values, rect_sticker, all_cont2, step_x, delta_y, step_y)
+
+        stickers, img_cnts_all, img_cnts_sample = reconstruct(i, img_in2, cX, cY, width_values, height_values,
+                                                              rect_sticker, all_cont2, step_x, delta_y, step_y)
 
         final_imgs.append((img_cnts_all, img_cnts_sample))
         cv2.destroyAllWindows()
         # taking colour samples from stickers
         data_arr = color_samples(i, img_in2, stickers, data_arr)
+
     # determining the colours
     _, CubeDefStr = sticker_colours(data_arr)
     retval = check_def_str(CubeDefStr, final_imgs)
