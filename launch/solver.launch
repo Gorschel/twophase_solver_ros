@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<launch>
+
+    <node name="cube_solver_server" pkg="twophase_solver_ros" type="solver_server.py" output="screen" />
+
+</launch>

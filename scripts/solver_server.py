@@ -27,7 +27,10 @@ def check_solution(sol_str):
 
 def handle_solve(req):
     print "\nstarting image processing.."
-    retval, cube_def_str = scan_cube()
+    try:
+        retval, cube_def_str = scan_cube()
+    except Exception as e:
+        print e
     if retval:
         print "\ncube-state scanned: {}".format(cube_def_str)
         print "\nfinding solution.."
@@ -40,6 +43,7 @@ def handle_solve(req):
     else:
         print "\nError in image processing: {}. Doing nothing".format(cube_def_str)
         return SolverResponse(0, '')
+    print 'Done.'
 
 
 if __name__ == "__main__":
