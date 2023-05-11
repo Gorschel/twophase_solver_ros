@@ -44,13 +44,13 @@ v_min_white_yellow = 107
 v_max_white_yellow = 255
 
 # show images
-verbosity = 0  # only if verbosity is true, the show images can be activated
+verbosity = 1  # only if verbosity is true, the show images can be activated
 show_input_image = 0
 show_hsv_image = 0
-show_hsv_color_detection = 0
+show_hsv_color_detection = 1
 show_blurred_image = 0
 show_binary_or_image = 0
-show_morphological_image = 0
+show_morphological_image = 1
 
 destroy_windows = 0
 

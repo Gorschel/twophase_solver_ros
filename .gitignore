@@ -1,2 +1,4 @@
-.vscode
+.vscode/
+.idea/
 src/twophase_solver_ros/scripts/.vscode/settings.json
+*.pyc
